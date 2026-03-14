@@ -90,6 +90,43 @@
   }
   .qbtn:hover{border-color:rgba(74,200,255,0.5);color:rgba(74,200,255,0.8);}
   .qbtn.active{background:rgba(74,200,255,0.15);border-color:rgba(74,200,255,0.6);color:#4af3ff;}
+
+  /* ── Slider ── */
+  .slider-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:160px;}
+  .slider-val{
+    font:700 10px/1 'Space Mono',monospace;
+    color:#4af3ff;min-width:34px;text-align:right;
+  }
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    flex:1;height:3px;border-radius:3px;outline:none;cursor:pointer;
+    background:linear-gradient(to right,#4af3ff var(--pct,50%),rgba(74,200,255,0.15) var(--pct,50%));
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:#4af3ff;border:2px solid #050912;box-shadow:0 0 6px rgba(74,243,255,0.5);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;
+    background:#4af3ff;border:2px solid #050912;
+  }
+
+  /* ── Toggle ── */
+  .toggle-wrap{display:flex;align-items:center;gap:10px;}
+  .toggle{position:relative;width:36px;height:20px;flex-shrink:0;}
+  .toggle input{opacity:0;width:0;height:0;position:absolute;}
+  .toggle-track{
+    position:absolute;inset:0;border-radius:20px;
+    background:rgba(74,200,255,0.12);border:1px solid rgba(74,200,255,0.2);
+    transition:background .2s,border-color .2s;cursor:pointer;
+  }
+  .toggle input:checked+.toggle-track{background:rgba(74,200,255,0.3);border-color:rgba(74,200,255,0.6);}
+  .toggle-thumb{
+    position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;
+    background:rgba(74,200,255,0.5);transition:left .2s,background .2s;pointer-events:none;
+  }
+  .toggle input:checked~.toggle-thumb{left:19px;background:#4af3ff;}
+  .toggle-label{font:300 11px/1 'DM Sans',sans-serif;color:rgba(74,200,255,0.6);}
   .swatches{display:flex;gap:7px;flex-wrap:wrap;}
   .swatch{
     width:22px;height:22px;border-radius:50%;cursor:pointer;
@@ -120,6 +157,31 @@
         <button class="qbtn" data-q="low">Bas</button>
         <button class="qbtn active" data-q="med">Moyen</button>
         <button class="qbtn" data-q="high">HD</button>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">Curseur</span>
+      <div class="slider-wrap">
+        <input type="range" id="cursorSlider" min="10" max="160" value="48">
+        <span class="slider-val" id="cursorVal">48</span>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">Densité</span>
+      <div class="slider-wrap">
+        <input type="range" id="densitySlider" min="5" max="100" value="100">
+        <span class="slider-val" id="densityVal">100%</span>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">Rotation 3D</span>
+      <div class="toggle-wrap">
+        <label class="toggle">
+          <input type="checkbox" id="toggle3d">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+        <span class="toggle-label">Texte qui tourne</span>
       </div>
     </div>
     <div class="panel-row">
@@ -303,20 +365,54 @@
   });
 
   // ── Physics ───────────────────────────────────────────────
-  const REPEL_R    = 48;
-  const ATTRACT_R  = 100;
-  const PUSH       = 26;
-  const PULL       = 0.045;
-  const SPRING     = 0.16;
-  const FRICTION   = 0.78;   // fort → retour rapide, pas de ballades
-  const STILL_DELAY= 36;
-  const FOCAL      = 900;
+  let  REPEL_R    = 48;    // contrôlé par le slider curseur
+  const ATTRACT_R = 100;
+  const PUSH      = 26;
+  const PULL      = 0.045;
+  const SPRING    = 0.16;
+  const FRICTION  = 0.78;
+  const STILL_DELAY=36;
+  const FOCAL     = 900;
+
+  let density3d   = 1.0;   // 0.05..1.0 — fraction des particules poussées
+  let text3DMode  = false;  // rotation 3D du texte utilisateur
+  let textAngle   = 0;
+  let textPts3D   = [];     // points 3D pour le mode rotation texte
+
+  // ── Slider curseur ────────────────────────────────────────
+  const cursorSlider = document.getElementById('cursorSlider');
+  const cursorVal    = document.getElementById('cursorVal');
+  function updateCursorSlider() {
+    REPEL_R = +cursorSlider.value;
+    cursorVal.textContent = REPEL_R;
+    const pct = ((REPEL_R-10)/(160-10)*100).toFixed(1);
+    cursorSlider.style.setProperty('--pct', pct+'%');
+  }
+  cursorSlider.addEventListener('input', updateCursorSlider);
+  updateCursorSlider();
+
+  // ── Slider densité ────────────────────────────────────────
+  const densitySlider = document.getElementById('densitySlider');
+  const densityVal    = document.getElementById('densityVal');
+  function updateDensitySlider() {
+    density3d = +densitySlider.value / 100;
+    densityVal.textContent = densitySlider.value + '%';
+    const pct = ((+densitySlider.value-5)/(100-5)*100).toFixed(1);
+    densitySlider.style.setProperty('--pct', pct+'%');
+  }
+  densitySlider.addEventListener('input', updateDensitySlider);
+  updateDensitySlider();
+
+  // ── Toggle 3D texte ───────────────────────────────────────
+  const toggle3d = document.getElementById('toggle3d');
+  toggle3d.addEventListener('change', () => {
+    text3DMode = toggle3d.checked;
+    if (!idleMode) scheduleRaster();
+  });
 
   const pool = []; let activeCount = 0;
   const off = document.createElement('canvas'), octx = off.getContext('2d');
   resize();
-
-  // ── 3D idle CENTRAX — extrusion réelle ────────────────────
   let angle = 0, idleMode = true;
   let idlePts = []; // [{ox, oy, oz}]
 
@@ -418,8 +514,8 @@
           const f=((ATTRACT_R-d)/ATTRACT_R)*PULL;
           this.vx+=(dx/d)*f*d*0.06;
           this.vy+=(dy/d)*f*d*0.06;
-        } else if (!ptr.still && d<REPEL_R) {
-          // Coup dans le sens du mouvement — UNIFORME comme un doigt qui balaie
+        } else if (!ptr.still && d<REPEL_R && Math.random()<density3d) {
+          // densité : à 20% seules 20% des billes dans la zone sont poussées
           const mv=Math.sqrt(ptr.vx*ptr.vx+ptr.vy*ptr.vy)||1;
           const proximity=(REPEL_R-d)/REPEL_R;
           const strength=PUSH*proximity*(1+Math.min(mv*0.1,2.2));
@@ -527,6 +623,11 @@
     for(let y=0;y<H;y+=sp) for(let x=0;x<W;x+=sp)
       if(d[(y*W+x)*4+3]>128) pts.push(x,y);
 
+    // Stocke les points centrés pour la rotation 3D texte
+    textPts3D = [];
+    for(let i=0;i<pts.length;i+=2) textPts3D.push({ox:pts[i]-W/2, oy:pts[i+1]-H/2});
+    textAngle = 0;
+
     const n = pts.length>>1;
     while(pool.length<n) pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1], false));
     for(let i=0;i<n;i++){
@@ -553,13 +654,29 @@
   inp.addEventListener('input',()=>{ hint.style.opacity='0'; scheduleRaster(); });
 
   // ── Loop ──────────────────────────────────────────────────
+  function projectText3D() {
+    const n=textPts3D.length; if(!n) return;
+    while(pool.length<n) pool.push(new Particle(W/2,H/2,false));
+    const cosA=Math.cos(textAngle), sinA=Math.sin(textAngle);
+    for(let i=0;i<n;i++){
+      const {ox,oy}=textPts3D[i];
+      const rx=ox*cosA, rz=ox*sinA;
+      const sc=FOCAL/(FOCAL+rz);
+      pool[i].tx=W/2+rx*sc; pool[i].ty=H/2+oy*sc; pool[i].scale3d=sc;
+      if(pool[i].a<0.05){pool[i].x=pool[i].tx;pool[i].y=pool[i].ty;pool[i].vx=0;pool[i].vy=0;}
+      pool[i].a=Math.max(pool[i].a,0.6);
+    }
+    activeCount=n;
+  }
+
   function loop(){
     if(ptr.x>0){stillTimer++;if(stillTimer>=STILL_DELAY)ptr.still=true;}
     if(idleMode&&idlePts.length){angle+=0.007;projectIdle();}
+    if(!idleMode&&text3DMode&&textPts3D.length){textAngle+=0.007;projectText3D();}
 
     ctx.clearRect(0,0,W,H); ctx.globalAlpha=1;
 
-    if(idleMode){
+    if(idleMode || (!idleMode&&text3DMode&&textPts3D.length)){
       // tri back-to-front par scale3d
       const slice=pool.slice(0,activeCount).sort((a,b)=>a.scale3d-b.scale3d);
       for(const p of slice){p.update(true);p.draw();}
