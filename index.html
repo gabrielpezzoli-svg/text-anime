@@ -81,6 +81,15 @@
     color:rgba(74,200,255,0.4);font-family:'Space Mono',monospace;
     min-width:80px;
   }
+  .quality-btns{display:flex;gap:7px;}
+  .qbtn{
+    padding:4px 12px;border-radius:20px;cursor:pointer;font-size:10px;
+    letter-spacing:.1em;text-transform:uppercase;font-family:'Space Mono',monospace;
+    border:1px solid rgba(74,200,255,0.2);color:rgba(74,200,255,0.45);
+    background:transparent;transition:all .2s;
+  }
+  .qbtn:hover{border-color:rgba(74,200,255,0.5);color:rgba(74,200,255,0.8);}
+  .qbtn.active{background:rgba(74,200,255,0.15);border-color:rgba(74,200,255,0.6);color:#4af3ff;}
   .swatches{display:flex;gap:7px;flex-wrap:wrap;}
   .swatch{
     width:22px;height:22px;border-radius:50%;cursor:pointer;
@@ -105,6 +114,14 @@
 <div class="bottom">
   <!-- Settings panel (above bar) -->
   <div class="panel" id="panel">
+    <div class="panel-row">
+      <span class="panel-label">Qualité</span>
+      <div class="quality-btns">
+        <button class="qbtn" data-q="low">Bas</button>
+        <button class="qbtn active" data-q="med">Moyen</button>
+        <button class="qbtn" data-q="high">HD</button>
+      </div>
+    </div>
     <div class="panel-row">
       <span class="panel-label">Sable</span>
       <div class="swatches" id="sandSwatches"></div>
@@ -264,8 +281,28 @@
   document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
   document.addEventListener('gesturechange', e => e.preventDefault(), {passive:false});
 
+  // ── Qualité ───────────────────────────────────────────────
+  // spacing = grille d'échantillonnage (petit = dense = plus de particules)
+  // rBase   = rayon de base des billes
+  const QUALITY = {
+    low:  { spacing: 6,  rBase: 2.2, idleSpacing: 8,  idleLayers: 4, idleR: 3.5 },
+    med:  { spacing: 3,  rBase: 0.9, idleSpacing: 7,  idleLayers: 5, idleR: 2.8 },
+    high: { spacing: 2,  rBase: 0.55,idleSpacing: 5,  idleLayers: 6, idleR: 2.2 },
+  };
+  let quality = QUALITY.med;
+
+  document.querySelectorAll('.qbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      quality = QUALITY[btn.dataset.q];
+      document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      // rebuild
+      if (idleMode) buildIdle();
+      else scheduleRaster();
+    });
+  });
+
   // ── Physics ───────────────────────────────────────────────
-  const SPACING    = 3;
   const REPEL_R    = 48;
   const ATTRACT_R  = 100;
   const PUSH       = 26;
@@ -281,61 +318,43 @@
 
   // ── 3D idle CENTRAX — extrusion réelle ────────────────────
   let angle = 0, idleMode = true;
-  // idlePts : [{ox, oy, oz}] — coordonnées 3D centrées
-  // ox/oy = position 2D dans le texte, oz = profondeur d'extrusion
-  let idlePts = [];
-  const EXTRUDE_DEPTH  = 0;   // sera calculé dynamiquement selon fs
-  const EXTRUDE_LAYERS = 7;   // tranches de profondeur
-  const IDLE_SPACING   = 4;   // grille un peu plus large pour garder les perfs
+  let idlePts = []; // [{ox, oy, oz}]
 
   function buildIdle() {
+    const iSp  = quality.idleSpacing;
+    const iLay = quality.idleLayers;
+
     octx.clearRect(0,0,W,H);
     let fs = Math.min(H*0.28, W*0.52);
     octx.font = `700 ${fs}px 'Space Mono', monospace`;
     while (octx.measureText('CENTRAX').width > W*0.84 && fs>20) { fs-=2; octx.font=`700 ${fs}px 'Space Mono', monospace`; }
 
-    // Stroke épais pour silhouette bien pleine
     const sw = Math.max(fs*0.10, 5);
-    octx.lineWidth = sw; octx.lineJoin='round';
+    octx.lineWidth=sw; octx.lineJoin='round';
     octx.strokeStyle='#fff'; octx.fillStyle='#fff';
     octx.textAlign='center'; octx.textBaseline='middle';
     octx.strokeText('CENTRAX',W/2,H/2);
     octx.fillText('CENTRAX',W/2,H/2);
 
     const imgData = octx.getImageData(0,0,W,H).data;
-    // Récupère les pixels de surface (face avant)
     const surface = [];
-    for (let y=0;y<H;y+=IDLE_SPACING) for (let x=0;x<W;x+=IDLE_SPACING)
+    for (let y=0;y<H;y+=iSp) for (let x=0;x<W;x+=iSp)
       if (imgData[(y*W+x)*4+3]>128) surface.push({ox:x-W/2, oy:y-H/2});
     octx.clearRect(0,0,W,H);
 
-    // Profondeur proportionnelle à la taille de police
-    const depth = fs * 0.22; // ~22% de la hauteur = épaisseur visible
-
+    const depth = fs * 0.28; // épaisseur = 28% de la taille police
     idlePts = [];
     for (const {ox,oy} of surface) {
-      for (let l=0; l<EXTRUDE_LAYERS; l++) {
-        // oz va de -depth/2 à +depth/2
-        const oz = -depth/2 + l*(depth/(EXTRUDE_LAYERS-1));
-        // Face : toutes les tranches
-        // Pour les tranches intermédiaires (ni avant ni arrière) on garde seulement les bords
-        // → réduit le nb de particules intérieures tout en gardant l'épaisseur visible
-        const isFace = (l===0 || l===EXTRUDE_LAYERS-1);
-        if (isFace) {
-          idlePts.push({ox, oy, oz});
-        } else {
-          // Bords : on ne prend qu'une particule toutes les N lignes pour l'intérieur
-          // En pratique on garde toutes les particules sur les tranches latérales
-          // mais on échantillonne sur la grille → déjà filtré par IDLE_SPACING
-          idlePts.push({ox, oy, oz});
-        }
+      for (let l=0; l<iLay; l++) {
+        const oz = -depth/2 + l*(depth/(iLay-1));
+        idlePts.push({ox, oy, oz});
       }
     }
   }
 
   function projectIdle() {
     const n = idlePts.length;
-    while (pool.length < n) pool.push(new Particle(W/2,H/2));
+    while (pool.length < n) pool.push(new Particle(W/2,H/2, true));
     const cosA=Math.cos(angle), sinA=Math.sin(angle);
     for (let i=0;i<n;i++) {
       const {ox,oy,oz} = idlePts[i];
@@ -355,9 +374,10 @@
 
   // ── Particle ──────────────────────────────────────────────
   class Particle {
-    constructor(tx,ty) {
+    constructor(tx,ty, isIdle=false) {
       this.x=tx; this.y=ty; this.vx=0; this.vy=0; this.tx=tx; this.ty=ty;
-      this.r   = 0.45 + Math.random()*0.5;
+      const rBase = isIdle ? quality.idleR : quality.rBase;
+      this.r   = rBase * (0.7 + Math.random()*0.6);
       this.bh  = sandColor.h;
       this.bs  = sandColor.s;
       this.bl  = sandColor.lMin + Math.random()*(sandColor.lMax-sandColor.lMin);
@@ -365,6 +385,7 @@
       this.baseA = this.a;
       this.spd = 0;
       this.scale3d = 1;
+      this.isIdle  = isIdle;
     }
 
     update(active) {
@@ -455,13 +476,17 @@
     octx.fillText(text,W/2,H/2);
     const d=octx.getImageData(0,0,W,H).data;
     const pts=[];
-    for(let y=0;y<H;y+=SPACING) for(let x=0;x<W;x+=SPACING) if(d[(y*W+x)*4+3]>128) pts.push(x,y);
+    const sp = quality.spacing;
+    for(let y=0;y<H;y+=sp) for(let x=0;x<W;x+=sp) if(d[(y*W+x)*4+3]>128) pts.push(x,y);
     const n=pts.length>>1;
-    while(pool.length<n) pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1]));
+    while(pool.length<n) pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1], false));
     for(let i=0;i<n;i++){
       pool[i].tx=pts[i*2]; pool[i].ty=pts[i*2+1]; pool[i].scale3d=1;
-      // re-teinte si couleur changée
       pool[i].bh=sandColor.h; pool[i].bs=sandColor.s;
+      // ajuste la taille des billes au mode texte
+      const rBase=quality.rBase;
+      pool[i].r = rBase*(0.7+Math.random()*0.6);
+      pool[i].isIdle=false;
       if(pool[i].a<0.1){pool[i].x=pts[i*2];pool[i].y=pts[i*2+1];pool[i].vx=0;pool[i].vy=0;}
       pool[i].a=Math.max(pool[i].a,0.65);
     }
