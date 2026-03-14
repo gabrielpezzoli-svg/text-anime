@@ -2,18 +2,27 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Particle Text</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&family=DM+Sans:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html{
+    touch-action:none;
+    overscroll-behavior:none;
+    -webkit-user-select:none;user-select:none;
+  }
   body{
     background:#050912;
-    width:100vw;height:100vh;overflow:hidden;
+    width:100vw;height:100dvh;overflow:hidden;touch-action:none;
     display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
     font-family:'DM Sans',sans-serif;
+    overscroll-behavior:none;
+    position:fixed;inset:0;
   }
-  canvas{position:fixed;top:0;left:0;z-index:1;}
+  canvas{position:fixed;top:0;left:0;z-index:1;touch-action:none;}
 
   /* ── Bottom zone ── */
   .bottom{
@@ -41,6 +50,7 @@
     flex:1;background:transparent;border:none;outline:none;
     color:#ddf0ff;font-family:'DM Sans',sans-serif;
     font-size:15px;font-weight:300;letter-spacing:.05em;caret-color:#4af3ff;
+    -webkit-user-select:text;user-select:text;touch-action:auto;
   }
   .bar input::placeholder{color:rgba(130,180,220,0.28);font-style:italic;}
 
@@ -232,18 +242,27 @@
 
   window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
   window.addEventListener('mouseleave', onEnd);
-  window.addEventListener('touchstart', e => {
+
+  // Touch — preventDefault bloque scroll ET zoom, mais seulement sur le canvas
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
     const t = e.touches[0];
     ptr.px = t.clientX; ptr.py = t.clientY;
     ptr.x  = t.clientX; ptr.y  = t.clientY;
     ptr.down = true;
-  }, {passive:true});
-  window.addEventListener('touchmove', e => {
+  }, {passive:false});
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
     const t = e.touches[0];
     onMove(t.clientX, t.clientY);
-  }, {passive:true});
-  window.addEventListener('touchend', onEnd);
-  window.addEventListener('touchcancel', onEnd);
+  }, {passive:false});
+  canvas.addEventListener('touchend', e => { e.preventDefault(); onEnd(); }, {passive:false});
+  canvas.addEventListener('touchcancel', e => { e.preventDefault(); onEnd(); }, {passive:false});
+
+  // Bloquer pinch-zoom et scroll sur tout le document
+  document.addEventListener('touchmove', e => { if(e.touches.length>1||!e.target.closest('input')) e.preventDefault(); }, {passive:false});
+  document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
+  document.addEventListener('gesturechange', e => e.preventDefault(), {passive:false});
 
   // ── Physics ───────────────────────────────────────────────
   const SPACING    = 3;
