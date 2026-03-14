@@ -63,20 +63,39 @@
   const hint   = document.getElementById('hint');
 
   let W, H;
-  const mouse = { x: -9999, y: -9999 };
 
-  // Physics constants
-  const REPEL_R  = 85;
-  const SPACING  = 3;      // sample grid px — controls density
-  const FRICTION = 0.84;
-  const SPRING   = 0.065;
-  const PUSH     = 7.5;
+  // ── Mouse state ──────────────────────────────────────────
+  const mouse = { x: -9999, y: -9999, vx: 0, vy: 0, still: false };
+  let lastMX = -9999, lastMY = -9999, stillTimer = 0;
 
-  // Single flat pool — no destroy/create spam
+  window.addEventListener('mousemove', e => {
+    mouse.vx = e.clientX - mouse.x;
+    mouse.vy = e.clientY - mouse.y;
+    mouse.x  = e.clientX;
+    mouse.y  = e.clientY;
+    mouse.still = false;
+    stillTimer  = 0;
+  });
+  window.addEventListener('mouseleave', () => {
+    mouse.x = -9999; mouse.y = -9999;
+    mouse.still = false; stillTimer = 0;
+  });
+
+  // ── Physics knobs ────────────────────────────────────────
+  const SPACING     = 3;
+  const REPEL_R     = 42;    // zone de répulsion (petite)
+  const ATTRACT_R   = 120;   // zone d'attraction quand souris immobile
+  const PUSH        = 22;    // impulsion de répulsion — fort
+  const PULL        = 0.06;  // force d'attraction vers souris immobile
+  const SPRING      = 0.045; // ressort plus vif pour retour rapide
+  const FRICTION    = 0.96;  // garde quand même l'inertie
+  const GRAVITY     = 0.06;
+  const STILL_DELAY = 38;    // frames avant de considérer souris immobile (~0.6s)
+
+  // ── Pool ─────────────────────────────────────────────────
   const pool = [];
-  let activeCount = 0;   // how many pool entries currently have real targets
+  let activeCount = 0;
 
-  /* ── Off-screen canvas for rasterising ─────────────────── */
   const off  = document.createElement('canvas');
   const octx = off.getContext('2d');
 
@@ -88,72 +107,84 @@
   window.addEventListener('resize', () => { resize(); rasterize(inp.value); });
   resize();
 
-  window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-  window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
-
-  /* ── Particle ───────────────────────────────────────────── */
+  // ── Particle ─────────────────────────────────────────────
   class Particle {
     constructor(tx, ty) {
-      this.x  = Math.random() * W;
-      this.y  = Math.random() * H;
+      this.x  = tx; this.y  = ty;   // spawn direct sur la cible
       this.vx = 0; this.vy = 0;
       this.tx = tx; this.ty = ty;
-      this.r  = 0.5 + Math.random() * 0.55;
-      const h = 195 + Math.random() * 35;
-      const l = 58  + Math.random() * 28;
-      this.col = `hsl(${h|0},90%,${l|0}%)`;
-      this.a   = 0.6 + Math.random() * 0.35;
+      this.r  = 0.48 + Math.random() * 0.52;
+      // base blue hue, stored as h/s/l for interpolation
+      this.bh = 200 + Math.random() * 30;
+      this.bl = 58  + Math.random() * 28;
+      this.a    = 0.65 + Math.random() * 0.3;
       this.baseA = this.a;
     }
 
     update(active) {
-      if (active) {
-        // repel from mouse
-        const dx = mouse.x - this.x, dy = mouse.y - this.y;
-        const d2 = dx*dx + dy*dy;
-        if (d2 < REPEL_R * REPEL_R) {
-          const d   = Math.sqrt(d2);
-          const f   = (REPEL_R - d) / REPEL_R;
-          const ang = Math.atan2(dy, dx);
-          this.vx -= Math.cos(ang) * f * PUSH;
-          this.vy -= Math.sin(ang) * f * PUSH;
-        }
-        // spring back to target
-        this.vx += (this.tx - this.x) * SPRING;
-        this.vy += (this.ty - this.y) * SPRING;
-        this.vx *= FRICTION; this.vy *= FRICTION;
-        this.x  += this.vx;  this.y  += this.vy;
-        // restore alpha
-        if (this.a < this.baseA) this.a += (this.baseA - this.a) * 0.08;
-      } else {
-        // idle: drift off
+      if (!active) {
         this.vx *= 0.97; this.vy *= 0.97;
         this.x  += this.vx; this.y += this.vy;
-        this.a  *= 0.97;   // fade out
+        this.a  *= 0.97;
+        return;
       }
+
+      const dx = mouse.x - this.x;
+      const dy = mouse.y - this.y;
+      const d2 = dx*dx + dy*dy;
+      const d  = Math.sqrt(d2);
+
+      if (mouse.x > 0) { // souris sur l'écran
+        if (mouse.still && d < ATTRACT_R) {
+          // ATTRACTION vers souris immobile
+          const f = ((ATTRACT_R - d) / ATTRACT_R) * PULL;
+          this.vx += dx / d * f * d * 0.08;
+          this.vy += dy / d * f * d * 0.08;
+        } else if (!mouse.still && d < REPEL_R) {
+          const f   = (REPEL_R - d) / REPEL_R;
+          const ang = Math.atan2(dy, dx);
+          const mv = Math.sqrt(mouse.vx**2 + mouse.vy**2);
+          const boost = 1 + Math.min(mv * 0.08, 2);
+          this.vx -= Math.cos(ang) * f * PUSH * boost;
+          this.vy -= Math.sin(ang) * f * PUSH * boost;
+        }
+      }
+
+      // légère gravité
+      this.vy += GRAVITY;
+
+      // ressort vers cible
+      const tdx = this.tx - this.x, tdy = this.ty - this.y;
+      const distSq = tdx*tdx + tdy*tdy;
+      this.vx += tdx * SPRING;
+      this.vy += tdy * SPRING;
+
+      // sur-amortissement quand proche : stoppe les oscillations
+      const fric = distSq < 100 ? 0.72 : FRICTION;
+      this.vx *= fric;
+      this.vy *= fric;
+
+      this.x += this.vx;
+      this.y += this.vy;
+
+      if (this.a < this.baseA) this.a += (this.baseA - this.a) * 0.05;
     }
 
     draw() {
       if (this.a < 0.01) return;
       ctx.globalAlpha = this.a;
-      ctx.fillStyle   = this.col;
+      ctx.fillStyle   = `hsl(${this.bh|0},90%,${this.bl|0}%)`;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.r, 0, 6.2832);
       ctx.fill();
     }
   }
 
-  /* ── Rasterise text → distribute among pool ────────────── */
+  // ── Rasterise ────────────────────────────────────────────
   function rasterize(text) {
     octx.clearRect(0, 0, W, H);
+    if (!text.trim()) { activeCount = 0; return; }
 
-    if (!text.trim()) {
-      // deactivate all — they'll fade
-      activeCount = 0;
-      return;
-    }
-
-    // Font size: bigger for fewer characters
     const len = text.length;
     let fs = Math.min(
       H * 0.32,
@@ -166,52 +197,51 @@
     fs = Math.max(fs, 24);
     octx.font = `700 ${fs}px 'Space Mono', monospace`;
     while (octx.measureText(text).width > W * 0.93 && fs > 20) {
-      fs -= 2;
-      octx.font = `700 ${fs}px 'Space Mono', monospace`;
+      fs -= 2; octx.font = `700 ${fs}px 'Space Mono', monospace`;
     }
-
-    octx.fillStyle    = '#fff';
-    octx.textAlign    = 'center';
-    octx.textBaseline = 'middle';
+    octx.fillStyle = '#fff'; octx.textAlign = 'center'; octx.textBaseline = 'middle';
     octx.fillText(text, W/2, H/2);
 
     const d = octx.getImageData(0, 0, W, H).data;
     const pts = [];
     for (let y = 0; y < H; y += SPACING)
       for (let x = 0; x < W; x += SPACING)
-        if (d[(y*W + x)*4 + 3] > 128) pts.push(x, y);  // flat array, faster
+        if (d[(y*W + x)*4 + 3] > 128) pts.push(x, y);
 
-    const n = pts.length >> 1; // number of points
-
-    // Grow pool if needed (never shrink — reuse)
+    const n = pts.length >> 1;
     while (pool.length < n) {
-      pool.push(new Particle(pts[(pool.length)*2], pts[(pool.length)*2+1]));
+      const p = new Particle(pts[pool.length*2], pts[pool.length*2+1]);
+      pool.push(p);
     }
-
-    // Assign new targets
     for (let i = 0; i < n; i++) {
-      pool[i].tx = pts[i*2];
-      pool[i].ty = pts[i*2+1];
-      pool[i].a  = Math.max(pool[i].a, 0.05); // wake up faded particles
+      pool[i].tx = pts[i*2]; pool[i].ty = pts[i*2+1];
+      // si la particule était inactive/loin, la téléporter sur la cible directement
+      if (pool[i].a < 0.1) {
+        pool[i].x = pts[i*2]; pool[i].y = pts[i*2+1];
+        pool[i].vx = 0; pool[i].vy = 0;
+      }
+      pool[i].a = Math.max(pool[i].a, 0.65);
     }
-
     activeCount = n;
   }
 
-  /* ── Render loop ────────────────────────────────────────── */
+  // ── Loop ─────────────────────────────────────────────────
   function loop() {
+    // track mouse stillness
+    if (mouse.x > 0) {
+      stillTimer++;
+      if (stillTimer >= STILL_DELAY) mouse.still = true;
+    }
+
     ctx.clearRect(0, 0, W, H);
     ctx.globalAlpha = 1;
-
     for (let i = 0; i < pool.length; i++) {
       pool[i].update(i < activeCount);
       pool[i].draw();
     }
-
     requestAnimationFrame(loop);
   }
 
-  /* ── Input ──────────────────────────────────────────────── */
   inp.addEventListener('input', () => {
     hint.style.opacity = inp.value.trim() ? '0' : '1';
     rasterize(inp.value);
