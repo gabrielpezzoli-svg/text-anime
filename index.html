@@ -64,189 +64,215 @@
 
   let W, H;
 
-  // ── Mouse state ──────────────────────────────────────────
-  const mouse = { x: -9999, y: -9999, vx: 0, vy: 0, still: false };
-  let lastMX = -9999, lastMY = -9999, stillTimer = 0;
-
+  // ── Mouse ─────────────────────────────────────────────────
+  const mouse = { x:-9999, y:-9999, vx:0, vy:0, still:false };
+  let stillTimer = 0;
   window.addEventListener('mousemove', e => {
     mouse.vx = e.clientX - mouse.x;
     mouse.vy = e.clientY - mouse.y;
-    mouse.x  = e.clientX;
-    mouse.y  = e.clientY;
-    mouse.still = false;
-    stillTimer  = 0;
-  });
-  window.addEventListener('mouseleave', () => {
-    mouse.x = -9999; mouse.y = -9999;
+    mouse.x  = e.clientX; mouse.y = e.clientY;
     mouse.still = false; stillTimer = 0;
   });
+  window.addEventListener('mouseleave', () => {
+    mouse.x = -9999; mouse.y = -9999; mouse.still = false; stillTimer = 0;
+  });
 
-  // ── Physics knobs ────────────────────────────────────────
-  const SPACING     = 3;
-  const REPEL_R     = 42;    // zone de répulsion (petite)
-  const ATTRACT_R   = 120;   // zone d'attraction quand souris immobile
-  const PUSH        = 22;    // impulsion de répulsion — fort
-  const PULL        = 0.06;  // force d'attraction vers souris immobile
-  const SPRING      = 0.045; // ressort plus vif pour retour rapide
-  const FRICTION    = 0.96;  // garde quand même l'inertie
-  const GRAVITY     = 0.06;
-  const STILL_DELAY = 38;    // frames avant de considérer souris immobile (~0.6s)
+  // ── Constants ─────────────────────────────────────────────
+  const SPACING    = 3;
+  const REPEL_R    = 50;      // rayon de la zone de répulsion
+  const ATTRACT_R  = 100;
+  const PUSH       = 28;      // force de base du coup
+  const PULL       = 0.05;
+  const SPRING     = 0.14;    // ressort vif
+  const FRICTION   = 0.80;    // fort amorti → s'arrête vite
+  const STILL_DELAY= 36;
+  const FOCAL      = 900;     // perspective 3D
 
-  // ── Pool ─────────────────────────────────────────────────
-  const pool = [];
-  let activeCount = 0;
-
-  const off  = document.createElement('canvas');
-  const octx = off.getContext('2d');
+  const pool = []; let activeCount = 0;
+  const off = document.createElement('canvas'), octx = off.getContext('2d');
 
   function resize() {
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
     off.width = W; off.height = H;
   }
-  window.addEventListener('resize', () => { resize(); rasterize(inp.value); });
+  window.addEventListener('resize', () => { resize(); scheduleRaster(); });
   resize();
 
-  // ── Particle ─────────────────────────────────────────────
-  class Particle {
-    constructor(tx, ty) {
-      this.x  = tx; this.y  = ty;   // spawn direct sur la cible
-      this.vx = 0; this.vy = 0;
-      this.tx = tx; this.ty = ty;
-      this.r  = 0.48 + Math.random() * 0.52;
-      // base blue hue, stored as h/s/l for interpolation
-      this.bh = 200 + Math.random() * 30;
-      this.bl = 58  + Math.random() * 28;
-      this.a    = 0.65 + Math.random() * 0.3;
-      this.baseA = this.a;
-    }
+  // ── 3D idle ───────────────────────────────────────────────
+  let angle = 0, idleMode = true;
+  let idlePts3D = []; // [{ox, oy}] centred, flat Z=0
 
-    update(active) {
-      if (!active) {
-        this.vx *= 0.97; this.vy *= 0.97;
-        this.x  += this.vx; this.y += this.vy;
-        this.a  *= 0.97;
-        return;
-      }
-
-      const dx = mouse.x - this.x;
-      const dy = mouse.y - this.y;
-      const d2 = dx*dx + dy*dy;
-      const d  = Math.sqrt(d2);
-
-      if (mouse.x > 0) { // souris sur l'écran
-        if (mouse.still && d < ATTRACT_R) {
-          // ATTRACTION vers souris immobile
-          const f = ((ATTRACT_R - d) / ATTRACT_R) * PULL;
-          this.vx += dx / d * f * d * 0.08;
-          this.vy += dy / d * f * d * 0.08;
-        } else if (!mouse.still && d < REPEL_R) {
-          const f   = (REPEL_R - d) / REPEL_R;
-          const ang = Math.atan2(dy, dx);
-          const mv = Math.sqrt(mouse.vx**2 + mouse.vy**2);
-          const boost = 1 + Math.min(mv * 0.08, 2);
-          this.vx -= Math.cos(ang) * f * PUSH * boost;
-          this.vy -= Math.sin(ang) * f * PUSH * boost;
-        }
-      }
-
-      // légère gravité
-      this.vy += GRAVITY;
-
-      // ressort vers cible
-      const tdx = this.tx - this.x, tdy = this.ty - this.y;
-      const distSq = tdx*tdx + tdy*tdy;
-      this.vx += tdx * SPRING;
-      this.vy += tdy * SPRING;
-
-      // sur-amortissement quand proche : stoppe les oscillations
-      const fric = distSq < 100 ? 0.72 : FRICTION;
-      this.vx *= fric;
-      this.vy *= fric;
-
-      this.x += this.vx;
-      this.y += this.vy;
-
-      if (this.a < this.baseA) this.a += (this.baseA - this.a) * 0.05;
-    }
-
-    draw() {
-      if (this.a < 0.01) return;
-      ctx.globalAlpha = this.a;
-      ctx.fillStyle   = `hsl(${this.bh|0},90%,${this.bl|0}%)`;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.r, 0, 6.2832);
-      ctx.fill();
-    }
+  function buildIdle3D() {
+    octx.clearRect(0, 0, W, H);
+    let fs = Math.min(H*0.32, W*0.55);
+    octx.font = `700 ${fs}px 'Space Mono', monospace`;
+    while (octx.measureText('CENTRAX').width > W*0.86 && fs > 20) { fs -= 2; octx.font = `700 ${fs}px 'Space Mono', monospace`; }
+    octx.fillStyle='#fff'; octx.textAlign='center'; octx.textBaseline='middle';
+    octx.fillText('CENTRAX', W/2, H/2);
+    const d = octx.getImageData(0, 0, W, H).data;
+    idlePts3D = [];
+    for (let y=0; y<H; y+=SPACING)
+      for (let x=0; x<W; x+=SPACING)
+        if (d[(y*W+x)*4+3]>128) idlePts3D.push({ ox: x-W/2, oy: y-H/2 });
+    octx.clearRect(0,0,W,H);
   }
 
-  // ── Rasterise ────────────────────────────────────────────
-  function rasterize(text) {
-    octx.clearRect(0, 0, W, H);
-    if (!text.trim()) { activeCount = 0; return; }
+  function projectIdle() {
+    const n = idlePts3D.length;
+    while (pool.length < n) pool.push(new Particle(W/2, H/2));
 
-    const len = text.length;
-    let fs = Math.min(
-      H * 0.32,
-      W * (len <= 3  ? 0.60
-         : len <= 6  ? 0.42
-         : len <= 10 ? 0.30
-         : len <= 16 ? 0.22
-         :             0.16)
-    );
-    fs = Math.max(fs, 24);
-    octx.font = `700 ${fs}px 'Space Mono', monospace`;
-    while (octx.measureText(text).width > W * 0.93 && fs > 20) {
-      fs -= 2; octx.font = `700 ${fs}px 'Space Mono', monospace`;
-    }
-    octx.fillStyle = '#fff'; octx.textAlign = 'center'; octx.textBaseline = 'middle';
-    octx.fillText(text, W/2, H/2);
+    const cosA = Math.cos(angle), sinA = Math.sin(angle);
+    for (let i=0; i<n; i++) {
+      const { ox, oy } = idlePts3D[i];
+      // Rotation Y: ox→rx, oz(0)→rz
+      const rx = ox * cosA;          // x après rotation
+      const rz = ox * sinA;          // profondeur z
+      // Perspective
+      const scale = FOCAL / (FOCAL + rz);
+      const sx = W/2 + rx * scale;
+      const sy = H/2 + oy * scale;
 
-    const d = octx.getImageData(0, 0, W, H).data;
-    const pts = [];
-    for (let y = 0; y < H; y += SPACING)
-      for (let x = 0; x < W; x += SPACING)
-        if (d[(y*W + x)*4 + 3] > 128) pts.push(x, y);
-
-    const n = pts.length >> 1;
-    while (pool.length < n) {
-      const p = new Particle(pts[pool.length*2], pts[pool.length*2+1]);
-      pool.push(p);
-    }
-    for (let i = 0; i < n; i++) {
-      pool[i].tx = pts[i*2]; pool[i].ty = pts[i*2+1];
-      // si la particule était inactive/loin, la téléporter sur la cible directement
-      if (pool[i].a < 0.1) {
-        pool[i].x = pts[i*2]; pool[i].y = pts[i*2+1];
-        pool[i].vx = 0; pool[i].vy = 0;
-      }
-      pool[i].a = Math.max(pool[i].a, 0.65);
+      pool[i].tx = sx; pool[i].ty = sy;
+      pool[i].scale3d = scale;       // pour taille + alpha
+      if (pool[i].a < 0.05) { pool[i].x = sx; pool[i].y = sy; pool[i].vx=0; pool[i].vy=0; }
+      pool[i].a = Math.max(pool[i].a, 0.6);
     }
     activeCount = n;
   }
 
-  // ── Loop ─────────────────────────────────────────────────
-  function loop() {
-    // track mouse stillness
-    if (mouse.x > 0) {
-      stillTimer++;
-      if (stillTimer >= STILL_DELAY) mouse.still = true;
+  // ── Particle ──────────────────────────────────────────────
+  class Particle {
+    constructor(tx, ty) {
+      this.x=tx; this.y=ty; this.vx=0; this.vy=0; this.tx=tx; this.ty=ty;
+      this.r   = 0.46 + Math.random()*0.5;
+      this.bh  = 200 + Math.random()*30;
+      this.bl  = 58  + Math.random()*28;
+      this.a   = 0.65 + Math.random()*0.3;
+      this.baseA = this.a;
+      this.spd = 0;
+      this.scale3d = 1;
     }
 
-    ctx.clearRect(0, 0, W, H);
-    ctx.globalAlpha = 1;
-    for (let i = 0; i < pool.length; i++) {
-      pool[i].update(i < activeCount);
-      pool[i].draw();
+    update(active) {
+      if (!active) {
+        this.vx*=0.95; this.vy*=0.95;
+        this.x+=this.vx; this.y+=this.vy;
+        this.a*=0.95; this.spd*=0.9;
+        return;
+      }
+
+      const dx=mouse.x-this.x, dy=mouse.y-this.y;
+      const d2=dx*dx+dy*dy, d=Math.sqrt(d2)||1;
+
+      if (mouse.x > 0) {
+        if (mouse.still && d < ATTRACT_R) {
+          // attraction douce
+          const f = ((ATTRACT_R-d)/ATTRACT_R)*PULL;
+          this.vx += (dx/d)*f*d*0.06;
+          this.vy += (dy/d)*f*d*0.06;
+        } else if (!mouse.still && d < REPEL_R) {
+          // COUP DE SABLE : push dans le sens du mouvement de la souris
+          const mv = Math.sqrt(mouse.vx*mouse.vx + mouse.vy*mouse.vy) || 1;
+          const proximity = (REPEL_R-d)/REPEL_R;     // 1 au centre, 0 au bord
+          const strength  = PUSH * proximity * (1 + Math.min(mv*0.12, 2.5));
+          // direction = direction du mouvement souris (normalisée)
+          this.vx += (mouse.vx/mv) * strength;
+          this.vy += (mouse.vy/mv) * strength;
+          // légère dispersion aléatoire pour effet sable
+          this.vx += (Math.random()-0.5)*4;
+          this.vy += (Math.random()-0.5)*4;
+        }
+      }
+
+      // ressort vers cible
+      const tdx=this.tx-this.x, tdy=this.ty-this.y;
+      const distSq=tdx*tdx+tdy*tdy;
+      this.vx += tdx*SPRING;
+      this.vy += tdy*SPRING;
+
+      // amortissement — plus fort quand proche pour stopper net
+      const fric = distSq < 16 ? 0.45 : FRICTION;
+      this.vx *= fric; this.vy *= fric;
+
+      // snap final si ultra proche et quasi immobile
+      if (distSq < 1 && this.vx*this.vx+this.vy*this.vy < 0.01) {
+        this.x=this.tx; this.y=this.ty; this.vx=0; this.vy=0;
+      } else {
+        this.x+=this.vx; this.y+=this.vy;
+      }
+
+      this.spd = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+      if (this.a < this.baseA) this.a += (this.baseA-this.a)*0.06;
+    }
+
+    draw() {
+      if (this.a < 0.01) return;
+      const t   = Math.min(this.spd/14, 1);
+      const hue = this.bh*(1-t) + 140*t;
+      const lit = this.bl*(1-t) + 65*t;
+      const r   = this.r * this.scale3d;
+      ctx.globalAlpha = this.a * (0.4 + this.scale3d*0.6);
+      ctx.fillStyle   = `hsl(${hue|0},90%,${lit|0}%)`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, Math.max(r,0.3), 0, 6.2832);
+      ctx.fill();
+    }
+  }
+
+  // ── Rasterise texte user ───────────────────────────────────
+  function rasterize(text) {
+    octx.clearRect(0,0,W,H);
+    if (!text.trim()) { activeCount=0; return; }
+    const len=text.length;
+    let fs=Math.min(H*0.32, W*(len<=3?.60:len<=6?.42:len<=10?.30:len<=16?.22:.16));
+    fs=Math.max(fs,24);
+    octx.font=`700 ${fs}px 'Space Mono', monospace`;
+    while(octx.measureText(text).width>W*0.93&&fs>20){fs-=2;octx.font=`700 ${fs}px 'Space Mono', monospace`;}
+    octx.fillStyle='#fff'; octx.textAlign='center'; octx.textBaseline='middle';
+    octx.fillText(text,W/2,H/2);
+    const d=octx.getImageData(0,0,W,H).data;
+    const pts=[];
+    for(let y=0;y<H;y+=SPACING) for(let x=0;x<W;x+=SPACING) if(d[(y*W+x)*4+3]>128) pts.push(x,y);
+    const n=pts.length>>1;
+    while(pool.length<n) pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1]));
+    for(let i=0;i<n;i++){
+      pool[i].tx=pts[i*2]; pool[i].ty=pts[i*2+1]; pool[i].scale3d=1;
+      if(pool[i].a<0.1){pool[i].x=pts[i*2];pool[i].y=pts[i*2+1];pool[i].vx=0;pool[i].vy=0;}
+      pool[i].a=Math.max(pool[i].a,0.65);
+    }
+    activeCount=n;
+  }
+
+  // ── Input ─────────────────────────────────────────────────
+  let rasterTimer=null;
+  function scheduleRaster(){
+    clearTimeout(rasterTimer);
+    rasterTimer=setTimeout(()=>{
+      if(inp.value.trim()){idleMode=false;rasterize(inp.value);}
+      else{idleMode=true;buildIdle3D();}
+    },0);
+  }
+  inp.addEventListener('input',()=>{ hint.style.opacity='0'; scheduleRaster(); });
+
+  // ── Loop ──────────────────────────────────────────────────
+  function loop(){
+    if(mouse.x>0){stillTimer++;if(stillTimer>=STILL_DELAY)mouse.still=true;}
+    if(idleMode&&idlePts3D.length){angle+=0.007;projectIdle();}
+    ctx.clearRect(0,0,W,H); ctx.globalAlpha=1;
+    // tri par depth pour rendu correct (back to front) en mode 3D
+    if(idleMode){
+      // sort par scale3d croissant = plus loin d'abord
+      const active=pool.slice(0,activeCount).sort((a,b)=>a.scale3d-b.scale3d);
+      for(const p of active){p.update(true);p.draw();}
+      for(let i=activeCount;i<pool.length;i++){pool[i].update(false);pool[i].draw();}
+    } else {
+      for(let i=0;i<pool.length;i++){pool[i].update(i<activeCount);pool[i].draw();}
     }
     requestAnimationFrame(loop);
   }
 
-  inp.addEventListener('input', () => {
-    hint.style.opacity = inp.value.trim() ? '0' : '1';
-    rasterize(inp.value);
-  });
-
+  buildIdle3D();
   loop();
 })();
 </script>
