@@ -174,6 +174,13 @@
       </div>
     </div>
     <div class="panel-row">
+      <span class="panel-label">Retour</span>
+      <div class="slider-wrap">
+        <input type="range" id="returnSlider" min="0" max="100" value="20">
+        <span class="slider-val" id="returnVal">20%</span>
+      </div>
+    </div>
+    <div class="panel-row">
       <span class="panel-label">Rotation 3D</span>
       <div class="toggle-wrap">
         <label class="toggle">
@@ -365,19 +372,19 @@
   });
 
   // ── Physics ───────────────────────────────────────────────
-  let  REPEL_R    = 48;    // contrôlé par le slider curseur
+  let  REPEL_R    = 48;
   const ATTRACT_R = 100;
   const PUSH      = 26;
   const PULL      = 0.045;
-  const SPRING    = 0.16;
-  const FRICTION  = 0.78;
+  let   SPRING    = 0.16;   // contrôlé par slider retour
+  let   FRICTION  = 0.78;
   const STILL_DELAY=36;
   const FOCAL     = 900;
 
-  let density3d   = 1.0;   // 0.05..1.0 — fraction des particules poussées
-  let text3DMode  = false;  // rotation 3D du texte utilisateur
+  let density3d   = 1.0;
+  let text3DMode  = false;
   let textAngle   = 0;
-  let textPts3D   = [];     // points 3D pour le mode rotation texte
+  let textPts3D   = [];
 
   // ── Slider curseur ────────────────────────────────────────
   const cursorSlider = document.getElementById('cursorSlider');
@@ -402,6 +409,25 @@
   }
   densitySlider.addEventListener('input', updateDensitySlider);
   updateDensitySlider();
+
+  // ── Slider retour ─────────────────────────────────────────
+  // 0%  → retour quasi instantané  (spring fort, friction forte)
+  // 20% → valeurs actuelles
+  // 100%→ retour très lent/flottant (spring mou, friction faible)
+  const returnSlider = document.getElementById('returnSlider');
+  const returnVal    = document.getElementById('returnVal');
+  function updateReturnSlider() {
+    const v = +returnSlider.value / 100; // 0..1
+    // spring : 0.55 (instant) → 0.16 (20%) → 0.008 (100%)
+    SPRING   = 0.55 * Math.pow(0.014, v);
+    // friction : 0.55 (instant) → 0.78 (20%) → 0.975 (100%)
+    FRICTION = 0.55 + v * 0.425;
+    returnVal.textContent = returnSlider.value + '%';
+    const pct = v * 100;
+    returnSlider.style.setProperty('--pct', pct+'%');
+  }
+  returnSlider.addEventListener('input', updateReturnSlider);
+  updateReturnSlider();
 
   // ── Toggle 3D texte ───────────────────────────────────────
   const toggle3d = document.getElementById('toggle3d');
