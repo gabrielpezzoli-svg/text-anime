@@ -260,9 +260,14 @@
   const off = document.createElement('canvas'), octx = off.getContext('2d');
   resize();
 
-  // ── 3D idle CENTRAX ───────────────────────────────────────
+  // ── 3D idle CENTRAX — extrusion réelle ────────────────────
   let angle = 0, idleMode = true;
-  let idlePts = []; // [{ox,oy}] centrés
+  // idlePts : [{ox, oy, oz}] — coordonnées 3D centrées
+  // ox/oy = position 2D dans le texte, oz = profondeur d'extrusion
+  let idlePts = [];
+  const EXTRUDE_DEPTH  = 0;   // sera calculé dynamiquement selon fs
+  const EXTRUDE_LAYERS = 7;   // tranches de profondeur
+  const IDLE_SPACING   = 4;   // grille un peu plus large pour garder les perfs
 
   function buildIdle() {
     octx.clearRect(0,0,W,H);
@@ -270,22 +275,43 @@
     octx.font = `700 ${fs}px 'Space Mono', monospace`;
     while (octx.measureText('CENTRAX').width > W*0.84 && fs>20) { fs-=2; octx.font=`700 ${fs}px 'Space Mono', monospace`; }
 
-    // Lettres épaisses : stroke large + fill
-    const strokeW = Math.max(fs*0.12, 6);
-    octx.lineWidth   = strokeW;
-    octx.lineJoin    = 'round';
-    octx.strokeStyle = '#fff';
-    octx.fillStyle   = '#fff';
-    octx.textAlign   = 'center';
-    octx.textBaseline= 'middle';
-    octx.strokeText('CENTRAX', W/2, H/2);
-    octx.fillText('CENTRAX', W/2, H/2);
+    // Stroke épais pour silhouette bien pleine
+    const sw = Math.max(fs*0.10, 5);
+    octx.lineWidth = sw; octx.lineJoin='round';
+    octx.strokeStyle='#fff'; octx.fillStyle='#fff';
+    octx.textAlign='center'; octx.textBaseline='middle';
+    octx.strokeText('CENTRAX',W/2,H/2);
+    octx.fillText('CENTRAX',W/2,H/2);
 
-    const d = octx.getImageData(0,0,W,H).data;
-    idlePts = [];
-    for (let y=0;y<H;y+=SPACING) for (let x=0;x<W;x+=SPACING)
-      if (d[(y*W+x)*4+3]>128) idlePts.push({ox:x-W/2, oy:y-H/2});
+    const imgData = octx.getImageData(0,0,W,H).data;
+    // Récupère les pixels de surface (face avant)
+    const surface = [];
+    for (let y=0;y<H;y+=IDLE_SPACING) for (let x=0;x<W;x+=IDLE_SPACING)
+      if (imgData[(y*W+x)*4+3]>128) surface.push({ox:x-W/2, oy:y-H/2});
     octx.clearRect(0,0,W,H);
+
+    // Profondeur proportionnelle à la taille de police
+    const depth = fs * 0.22; // ~22% de la hauteur = épaisseur visible
+
+    idlePts = [];
+    for (const {ox,oy} of surface) {
+      for (let l=0; l<EXTRUDE_LAYERS; l++) {
+        // oz va de -depth/2 à +depth/2
+        const oz = -depth/2 + l*(depth/(EXTRUDE_LAYERS-1));
+        // Face : toutes les tranches
+        // Pour les tranches intermédiaires (ni avant ni arrière) on garde seulement les bords
+        // → réduit le nb de particules intérieures tout en gardant l'épaisseur visible
+        const isFace = (l===0 || l===EXTRUDE_LAYERS-1);
+        if (isFace) {
+          idlePts.push({ox, oy, oz});
+        } else {
+          // Bords : on ne prend qu'une particule toutes les N lignes pour l'intérieur
+          // En pratique on garde toutes les particules sur les tranches latérales
+          // mais on échantillonne sur la grille → déjà filtré par IDLE_SPACING
+          idlePts.push({ox, oy, oz});
+        }
+      }
+    }
   }
 
   function projectIdle() {
@@ -293,10 +319,14 @@
     while (pool.length < n) pool.push(new Particle(W/2,H/2));
     const cosA=Math.cos(angle), sinA=Math.sin(angle);
     for (let i=0;i<n;i++) {
-      const {ox,oy} = idlePts[i];
-      const rx = ox*cosA, rz = ox*sinA;
-      const sc = FOCAL/(FOCAL+rz);
-      const sx = W/2+rx*sc, sy = H/2+oy*sc;
+      const {ox,oy,oz} = idlePts[i];
+      // Rotation Y : x' = ox·cos - oz·sin,  z' = ox·sin + oz·cos
+      const rx = ox*cosA - oz*sinA;
+      const rz = ox*sinA + oz*cosA;
+      const sc = FOCAL/(FOCAL+rz);      // perspective
+      const sx = W/2 + rx*sc;
+      const sy = H/2 + oy*sc;
+
       pool[i].tx=sx; pool[i].ty=sy; pool[i].scale3d=sc;
       if (pool[i].a<0.05) { pool[i].x=sx; pool[i].y=sy; pool[i].vx=0; pool[i].vy=0; }
       pool[i].a = Math.max(pool[i].a, 0.6);
