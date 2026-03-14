@@ -464,26 +464,74 @@
   }
 
   // ── Rasterise texte user ───────────────────────────────────
+  // Découpe le texte en lignes pour remplir l'écran
+  function wrapText(text, fs) {
+    octx.font = `700 ${fs}px 'Space Mono', monospace`;
+    const maxW = W * 0.92;
+    // si ça tient en une ligne → une ligne
+    if (octx.measureText(text).width <= maxW) return [text];
+    // sinon découpe mot par mot
+    const words = text.split(' ');
+    if (words.length === 1) return [text]; // un seul mot, pas de découpe possible
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? cur + ' ' + w : w;
+      if (octx.measureText(test).width > maxW && cur) {
+        lines.push(cur); cur = w;
+      } else { cur = test; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
   function rasterize(text) {
     octx.clearRect(0,0,W,H);
     if (!text.trim()) { activeCount=0; return; }
-    const len=text.length;
-    let fs=Math.min(H*0.32,W*(len<=3?.60:len<=6?.42:len<=10?.30:len<=16?.22:.16));
-    fs=Math.max(fs,24);
-    octx.font=`700 ${fs}px 'Space Mono', monospace`;
-    while(octx.measureText(text).width>W*0.93&&fs>20){fs-=2;octx.font=`700 ${fs}px 'Space Mono', monospace`;}
-    octx.fillStyle='#fff'; octx.textAlign='center'; octx.textBaseline='middle';
-    octx.fillText(text,W/2,H/2);
-    const d=octx.getImageData(0,0,W,H).data;
-    const pts=[];
-    const sp = quality.spacing;
-    for(let y=0;y<H;y+=sp) for(let x=0;x<W;x+=sp) if(d[(y*W+x)*4+3]>128) pts.push(x,y);
-    const n=pts.length>>1;
+
+    const usableH = H * 0.82; // on laisse de la place pour la barre en bas
+    const maxW    = W * 0.92;
+
+    // Trouve la taille de police optimale :
+    // on cherche le fs maximal tel que toutes les lignes tiennent en largeur
+    // ET que l'ensemble des lignes tienne en hauteur
+    let fs = Math.min(H * 0.85, W * 1.2); // commence très grand
+    fs = Math.max(fs, 20);
+
+    let lines;
+    while (fs > 12) {
+      lines = wrapText(text, fs);
+      octx.font = `700 ${fs}px 'Space Mono', monospace`;
+      const lineH   = fs * 1.15;
+      const totalH  = lines.length * lineH;
+      const maxLineW = Math.max(...lines.map(l => octx.measureText(l).width));
+      if (maxLineW <= maxW && totalH <= usableH) break;
+      fs -= 2;
+    }
+
+    // Dessine les lignes centrées verticalement dans la zone usable
+    octx.font           = `700 ${fs}px 'Space Mono', monospace`;
+    octx.fillStyle      = '#fff';
+    octx.textAlign      = 'center';
+    octx.textBaseline   = 'middle';
+    const lineH   = fs * 1.15;
+    const totalH  = lines.length * lineH;
+    const startY  = (H * 0.46) - totalH/2 + lineH/2; // centré légèrement vers le haut
+    for (let i=0; i<lines.length; i++) {
+      octx.fillText(lines[i], W/2, startY + i*lineH);
+    }
+
+    const d  = octx.getImageData(0,0,W,H).data;
+    const pts = [];
+    const sp  = quality.spacing;
+    for(let y=0;y<H;y+=sp) for(let x=0;x<W;x+=sp)
+      if(d[(y*W+x)*4+3]>128) pts.push(x,y);
+
+    const n = pts.length>>1;
     while(pool.length<n) pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1], false));
     for(let i=0;i<n;i++){
       pool[i].tx=pts[i*2]; pool[i].ty=pts[i*2+1]; pool[i].scale3d=1;
       pool[i].bh=sandColor.h; pool[i].bs=sandColor.s;
-      // ajuste la taille des billes au mode texte
       const rBase=quality.rBase;
       pool[i].r = rBase*(0.7+Math.random()*0.6);
       pool[i].isIdle=false;
