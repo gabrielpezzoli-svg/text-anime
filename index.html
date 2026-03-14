@@ -2,58 +2,115 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Particle Text</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&family=DM+Sans:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    background: #050912;
-    width: 100vw; height: 100vh;
-    overflow: hidden;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: flex-end;
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    background:#050912;
+    width:100vw;height:100vh;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    font-family:'DM Sans',sans-serif;
   }
-  canvas { position: fixed; top:0; left:0; z-index:1; }
-  .bar {
-    position: relative; z-index: 10;
-    width: min(680px, 88vw);
-    margin-bottom: 38px;
-    background: rgba(8,16,40,0.82);
-    border: 1px solid rgba(74,200,255,0.15);
-    border-radius: 60px;
-    padding: 13px 26px;
-    backdrop-filter: blur(18px);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03);
-    transition: border-color .3s, box-shadow .3s;
+  canvas{position:fixed;top:0;left:0;z-index:1;}
+
+  /* ── Bottom zone ── */
+  .bottom{
+    position:relative;z-index:10;
+    width:min(720px,92vw);
+    margin-bottom:32px;
+    display:flex;flex-direction:column;gap:12px;align-items:center;
   }
-  .bar:focus-within {
-    border-color: rgba(74,200,255,0.38);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 0 28px rgba(74,200,255,0.07);
+
+  /* ── Input bar ── */
+  .bar{
+    width:100%;display:flex;align-items:center;gap:10px;
+    background:rgba(8,16,40,0.85);
+    border:1px solid rgba(74,200,255,0.18);
+    border-radius:60px;padding:12px 16px 12px 24px;
+    backdrop-filter:blur(20px);
+    box-shadow:0 8px 40px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.03);
+    transition:border-color .3s,box-shadow .3s;
   }
-  .bar input {
-    width: 100%;
-    background: transparent; border: none; outline: none;
-    color: #ddf0ff;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px; font-weight: 300; letter-spacing: .05em;
-    caret-color: #4af3ff;
+  .bar:focus-within{
+    border-color:rgba(74,200,255,0.4);
+    box-shadow:0 8px 40px rgba(0,0,0,0.55),0 0 30px rgba(74,200,255,0.08);
   }
-  .bar input::placeholder { color: rgba(130,180,220,0.28); font-style: italic; }
-  .hint {
-    position: fixed; bottom: 108px; left: 50%; transform: translateX(-50%);
-    z-index:10; color: rgba(74,200,255,0.22);
-    font: 300 10px/1 'DM Sans', sans-serif;
-    letter-spacing: .18em; text-transform: uppercase;
-    pointer-events: none; transition: opacity .6s;
-    white-space: nowrap;
+  .bar input{
+    flex:1;background:transparent;border:none;outline:none;
+    color:#ddf0ff;font-family:'DM Sans',sans-serif;
+    font-size:15px;font-weight:300;letter-spacing:.05em;caret-color:#4af3ff;
+  }
+  .bar input::placeholder{color:rgba(130,180,220,0.28);font-style:italic;}
+
+  /* ── Settings toggle button ── */
+  .settings-btn{
+    flex-shrink:0;width:34px;height:34px;border-radius:50%;
+    background:rgba(74,200,255,0.08);border:1px solid rgba(74,200,255,0.2);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:background .2s,border-color .2s;color:rgba(74,200,255,0.6);
+    font-size:15px;user-select:none;
+  }
+  .settings-btn:hover,.settings-btn.open{background:rgba(74,200,255,0.18);border-color:rgba(74,200,255,0.45);color:#4af3ff;}
+
+  /* ── Settings panel ── */
+  .panel{
+    width:100%;
+    background:rgba(6,12,32,0.92);
+    border:1px solid rgba(74,200,255,0.14);
+    border-radius:18px;padding:16px 20px;
+    backdrop-filter:blur(22px);
+    box-shadow:0 8px 40px rgba(0,0,0,0.5);
+    display:none;flex-direction:column;gap:14px;
+  }
+  .panel.open{display:flex;}
+  .panel-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .panel-label{
+    font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+    color:rgba(74,200,255,0.4);font-family:'Space Mono',monospace;
+    min-width:80px;
+  }
+  .swatches{display:flex;gap:7px;flex-wrap:wrap;}
+  .swatch{
+    width:22px;height:22px;border-radius:50%;cursor:pointer;
+    border:2px solid transparent;transition:transform .15s,border-color .15s;
+    flex-shrink:0;
+  }
+  .swatch:hover{transform:scale(1.2);}
+  .swatch.active{border-color:#fff;transform:scale(1.15);}
+
+  .hint{
+    position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+    z-index:10;color:rgba(74,200,255,0.2);
+    font:300 10px/1 'DM Sans',sans-serif;letter-spacing:.18em;text-transform:uppercase;
+    pointer-events:none;transition:opacity .6s;white-space:nowrap;
   }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <p class="hint" id="hint">Commencez à taper…</p>
-<div class="bar"><input id="inp" type="text" placeholder="Votre texte ici…" autocomplete="off" spellcheck="false"></div>
+
+<div class="bottom">
+  <!-- Settings panel (above bar) -->
+  <div class="panel" id="panel">
+    <div class="panel-row">
+      <span class="panel-label">Sable</span>
+      <div class="swatches" id="sandSwatches"></div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">Fond</span>
+      <div class="swatches" id="bgSwatches"></div>
+    </div>
+  </div>
+
+  <!-- Input bar -->
+  <div class="bar">
+    <input id="inp" type="text" placeholder="Votre texte ici…" autocomplete="off" spellcheck="false">
+    <div class="settings-btn" id="settingsBtn" title="Couleurs">⚙</div>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -61,81 +118,187 @@
   const ctx    = canvas.getContext('2d');
   const inp    = document.getElementById('inp');
   const hint   = document.getElementById('hint');
+  const panel  = document.getElementById('panel');
+  const settingsBtn = document.getElementById('settingsBtn');
 
   let W, H;
 
-  // ── Mouse ─────────────────────────────────────────────────
-  const mouse = { x:-9999, y:-9999, vx:0, vy:0, still:false };
-  let stillTimer = 0;
-  window.addEventListener('mousemove', e => {
-    mouse.vx = e.clientX - mouse.x;
-    mouse.vy = e.clientY - mouse.y;
-    mouse.x  = e.clientX; mouse.y = e.clientY;
-    mouse.still = false; stillTimer = 0;
+  // ── Couleurs configurables ─────────────────────────────────
+  const SAND_COLORS = [
+    {label:'Bleu',h:210,s:90,lMin:58,lMax:82},
+    {label:'Cyan',h:185,s:90,lMin:55,lMax:80},
+    {label:'Violet',h:270,s:80,lMin:60,lMax:80},
+    {label:'Rose',h:320,s:85,lMin:60,lMax:80},
+    {label:'Rouge',h:0,s:90,lMin:55,lMax:75},
+    {label:'Orange',h:28,s:95,lMin:55,lMax:75},
+    {label:'Jaune',h:48,s:95,lMin:60,lMax:80},
+    {label:'Vert',h:140,s:85,lMin:50,lMax:72},
+    {label:'Vert eau',h:165,s:80,lMin:55,lMax:75},
+    {label:'Blanc',h:210,s:20,lMin:80,lMax:95},
+    {label:'Or',h:40,s:90,lMin:60,lMax:78},
+    {label:'Lavande',h:250,s:70,lMin:65,lMax:82},
+    {label:'Saumon',h:15,s:85,lMin:65,lMax:80},
+    {label:'Menthe',h:160,s:60,lMin:65,lMax:80},
+    {label:'Indigo',h:230,s:75,lMin:55,lMax:75},
+  ];
+
+  const BG_COLORS = [
+    {label:'Nuit',val:'#050912'},
+    {label:'Noir',val:'#000000'},
+    {label:'Marine',val:'#020a1a'},
+    {label:'Prune',val:'#0e0514'},
+    {label:'Forêt',val:'#040e06'},
+    {label:'Charbon',val:'#111111'},
+    {label:'Ardoise',val:'#080c14'},
+    {label:'Cramoisi',val:'#0f0408'},
+    {label:'Gris sombre',val:'#1a1a1a'},
+    {label:'Minuit bleu',val:'#060d1e'},
+  ];
+
+  let sandColor  = SAND_COLORS[0];
+  let bgColor    = BG_COLORS[0].val;
+
+  // ── Build swatches ─────────────────────────────────────────
+  function buildSwatches() {
+    const sc = document.getElementById('sandSwatches');
+    const bc = document.getElementById('bgSwatches');
+    sc.innerHTML = ''; bc.innerHTML = '';
+
+    SAND_COLORS.forEach((c, i) => {
+      const el = document.createElement('div');
+      el.className = 'swatch' + (i===0?' active':'');
+      el.style.background = `hsl(${c.h},${c.s}%,${(c.lMin+c.lMax)/2}%)`;
+      el.title = c.label;
+      el.addEventListener('click', () => {
+        sandColor = c;
+        sc.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+        el.classList.add('active');
+        // re-teinter les particules existantes
+        pool.forEach(p => {
+          p.bh = c.h; p.bs = c.s;
+          p.bl = c.lMin + Math.random()*(c.lMax-c.lMin);
+        });
+      });
+      sc.appendChild(el);
+    });
+
+    BG_COLORS.forEach((c, i) => {
+      const el = document.createElement('div');
+      el.className = 'swatch' + (i===0?' active':'');
+      el.style.background = c.val;
+      el.style.border = c.val==='#000000'?'2px solid #333':'';
+      el.title = c.label;
+      el.addEventListener('click', () => {
+        bgColor = c.val;
+        document.body.style.background = bgColor;
+        bc.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+        el.classList.add('active');
+      });
+      bc.appendChild(el);
+    });
+  }
+  buildSwatches();
+
+  settingsBtn.addEventListener('click', () => {
+    const open = panel.classList.toggle('open');
+    settingsBtn.classList.toggle('open', open);
   });
-  window.addEventListener('mouseleave', () => {
-    mouse.x = -9999; mouse.y = -9999; mouse.still = false; stillTimer = 0;
-  });
 
-  // ── Constants ─────────────────────────────────────────────
-  const SPACING    = 3;
-  const REPEL_R    = 50;      // rayon de la zone de répulsion
-  const ATTRACT_R  = 100;
-  const PUSH       = 28;      // force de base du coup
-  const PULL       = 0.05;
-  const SPRING     = 0.14;    // ressort vif
-  const FRICTION   = 0.80;    // fort amorti → s'arrête vite
-  const STILL_DELAY= 36;
-  const FOCAL      = 900;     // perspective 3D
-
-  const pool = []; let activeCount = 0;
-  const off = document.createElement('canvas'), octx = off.getContext('2d');
-
+  // ── Resize ────────────────────────────────────────────────
   function resize() {
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
     off.width = W; off.height = H;
   }
   window.addEventListener('resize', () => { resize(); scheduleRaster(); });
+
+  // ── Mouse / Touch unifié ──────────────────────────────────
+  // On garde la DERNIÈRE position ET la précédente pour faire le sweep segment
+  const ptr = { x:-9999, y:-9999, px:-9999, py:-9999,
+                vx:0, vy:0, down:false, still:false };
+  let stillTimer = 0;
+
+  function onMove(cx, cy) {
+    ptr.px = ptr.x; ptr.py = ptr.y;
+    ptr.vx = cx - ptr.x; ptr.vy = cy - ptr.y;
+    ptr.x  = cx; ptr.y  = cy;
+    ptr.still = false; stillTimer = 0;
+  }
+  function onEnd() {
+    ptr.px = ptr.x; ptr.py = ptr.y;
+    ptr.x = -9999; ptr.y = -9999;
+    ptr.still = false; stillTimer = 0; ptr.down = false;
+  }
+
+  window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+  window.addEventListener('mouseleave', onEnd);
+  window.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    ptr.px = t.clientX; ptr.py = t.clientY;
+    ptr.x  = t.clientX; ptr.y  = t.clientY;
+    ptr.down = true;
+  }, {passive:true});
+  window.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    onMove(t.clientX, t.clientY);
+  }, {passive:true});
+  window.addEventListener('touchend', onEnd);
+  window.addEventListener('touchcancel', onEnd);
+
+  // ── Physics ───────────────────────────────────────────────
+  const SPACING    = 3;
+  const REPEL_R    = 48;
+  const ATTRACT_R  = 100;
+  const PUSH       = 26;
+  const PULL       = 0.045;
+  const SPRING     = 0.16;
+  const FRICTION   = 0.78;   // fort → retour rapide, pas de ballades
+  const STILL_DELAY= 36;
+  const FOCAL      = 900;
+
+  const pool = []; let activeCount = 0;
+  const off = document.createElement('canvas'), octx = off.getContext('2d');
   resize();
 
-  // ── 3D idle ───────────────────────────────────────────────
+  // ── 3D idle CENTRAX ───────────────────────────────────────
   let angle = 0, idleMode = true;
-  let idlePts3D = []; // [{ox, oy}] centred, flat Z=0
+  let idlePts = []; // [{ox,oy}] centrés
 
-  function buildIdle3D() {
-    octx.clearRect(0, 0, W, H);
-    let fs = Math.min(H*0.32, W*0.55);
+  function buildIdle() {
+    octx.clearRect(0,0,W,H);
+    let fs = Math.min(H*0.28, W*0.52);
     octx.font = `700 ${fs}px 'Space Mono', monospace`;
-    while (octx.measureText('CENTRAX').width > W*0.86 && fs > 20) { fs -= 2; octx.font = `700 ${fs}px 'Space Mono', monospace`; }
-    octx.fillStyle='#fff'; octx.textAlign='center'; octx.textBaseline='middle';
+    while (octx.measureText('CENTRAX').width > W*0.84 && fs>20) { fs-=2; octx.font=`700 ${fs}px 'Space Mono', monospace`; }
+
+    // Lettres épaisses : stroke large + fill
+    const strokeW = Math.max(fs*0.12, 6);
+    octx.lineWidth   = strokeW;
+    octx.lineJoin    = 'round';
+    octx.strokeStyle = '#fff';
+    octx.fillStyle   = '#fff';
+    octx.textAlign   = 'center';
+    octx.textBaseline= 'middle';
+    octx.strokeText('CENTRAX', W/2, H/2);
     octx.fillText('CENTRAX', W/2, H/2);
-    const d = octx.getImageData(0, 0, W, H).data;
-    idlePts3D = [];
-    for (let y=0; y<H; y+=SPACING)
-      for (let x=0; x<W; x+=SPACING)
-        if (d[(y*W+x)*4+3]>128) idlePts3D.push({ ox: x-W/2, oy: y-H/2 });
+
+    const d = octx.getImageData(0,0,W,H).data;
+    idlePts = [];
+    for (let y=0;y<H;y+=SPACING) for (let x=0;x<W;x+=SPACING)
+      if (d[(y*W+x)*4+3]>128) idlePts.push({ox:x-W/2, oy:y-H/2});
     octx.clearRect(0,0,W,H);
   }
 
   function projectIdle() {
-    const n = idlePts3D.length;
-    while (pool.length < n) pool.push(new Particle(W/2, H/2));
-
-    const cosA = Math.cos(angle), sinA = Math.sin(angle);
-    for (let i=0; i<n; i++) {
-      const { ox, oy } = idlePts3D[i];
-      // Rotation Y: ox→rx, oz(0)→rz
-      const rx = ox * cosA;          // x après rotation
-      const rz = ox * sinA;          // profondeur z
-      // Perspective
-      const scale = FOCAL / (FOCAL + rz);
-      const sx = W/2 + rx * scale;
-      const sy = H/2 + oy * scale;
-
-      pool[i].tx = sx; pool[i].ty = sy;
-      pool[i].scale3d = scale;       // pour taille + alpha
-      if (pool[i].a < 0.05) { pool[i].x = sx; pool[i].y = sy; pool[i].vx=0; pool[i].vy=0; }
+    const n = idlePts.length;
+    while (pool.length < n) pool.push(new Particle(W/2,H/2));
+    const cosA=Math.cos(angle), sinA=Math.sin(angle);
+    for (let i=0;i<n;i++) {
+      const {ox,oy} = idlePts[i];
+      const rx = ox*cosA, rz = ox*sinA;
+      const sc = FOCAL/(FOCAL+rz);
+      const sx = W/2+rx*sc, sy = H/2+oy*sc;
+      pool[i].tx=sx; pool[i].ty=sy; pool[i].scale3d=sc;
+      if (pool[i].a<0.05) { pool[i].x=sx; pool[i].y=sy; pool[i].vx=0; pool[i].vy=0; }
       pool[i].a = Math.max(pool[i].a, 0.6);
     }
     activeCount = n;
@@ -143,11 +306,12 @@
 
   // ── Particle ──────────────────────────────────────────────
   class Particle {
-    constructor(tx, ty) {
+    constructor(tx,ty) {
       this.x=tx; this.y=ty; this.vx=0; this.vy=0; this.tx=tx; this.ty=ty;
-      this.r   = 0.46 + Math.random()*0.5;
-      this.bh  = 200 + Math.random()*30;
-      this.bl  = 58  + Math.random()*28;
+      this.r   = 0.45 + Math.random()*0.5;
+      this.bh  = sandColor.h;
+      this.bs  = sandColor.s;
+      this.bl  = sandColor.lMin + Math.random()*(sandColor.lMax-sandColor.lMin);
       this.a   = 0.65 + Math.random()*0.3;
       this.baseA = this.a;
       this.spd = 0;
@@ -162,60 +326,69 @@
         return;
       }
 
-      const dx=mouse.x-this.x, dy=mouse.y-this.y;
-      const d2=dx*dx+dy*dy, d=Math.sqrt(d2)||1;
-
-      if (mouse.x > 0) {
-        if (mouse.still && d < ATTRACT_R) {
-          // attraction douce
-          const f = ((ATTRACT_R-d)/ATTRACT_R)*PULL;
-          this.vx += (dx/d)*f*d*0.06;
-          this.vy += (dy/d)*f*d*0.06;
-        } else if (!mouse.still && d < REPEL_R) {
-          // COUP DE SABLE : push dans le sens du mouvement de la souris
-          const mv = Math.sqrt(mouse.vx*mouse.vx + mouse.vy*mouse.vy) || 1;
-          const proximity = (REPEL_R-d)/REPEL_R;     // 1 au centre, 0 au bord
-          const strength  = PUSH * proximity * (1 + Math.min(mv*0.12, 2.5));
-          // direction = direction du mouvement souris (normalisée)
-          this.vx += (mouse.vx/mv) * strength;
-          this.vy += (mouse.vy/mv) * strength;
-          // légère dispersion aléatoire pour effet sable
-          this.vx += (Math.random()-0.5)*4;
-          this.vy += (Math.random()-0.5)*4;
+      // ── Distance au SEGMENT souris (prev→cur) ──
+      // évite les cercles répétés en cas de latence
+      let ex=ptr.x, ey=ptr.y;
+      if (ptr.px>0 && ptr.x>0) {
+        // point le plus proche du segment px,py→x,y
+        const segDx=ptr.x-ptr.px, segDy=ptr.y-ptr.py;
+        const segLen2=segDx*segDx+segDy*segDy;
+        if (segLen2>0) {
+          let t=((this.x-ptr.px)*segDx+(this.y-ptr.py)*segDy)/segLen2;
+          t=Math.max(0,Math.min(1,t));
+          ex=ptr.px+t*segDx; ey=ptr.py+t*segDy;
         }
       }
 
-      // ressort vers cible
+      const dx=ex-this.x, dy=ey-this.y;
+      const d2=dx*dx+dy*dy, d=Math.sqrt(d2)||1;
+
+      if (ptr.x>0) {
+        if (ptr.still && d<ATTRACT_R) {
+          const f=((ATTRACT_R-d)/ATTRACT_R)*PULL;
+          this.vx+=(dx/d)*f*d*0.06;
+          this.vy+=(dy/d)*f*d*0.06;
+        } else if (!ptr.still && d<REPEL_R) {
+          // Coup dans le sens du mouvement — UNIFORME comme un doigt qui balaie
+          const mv=Math.sqrt(ptr.vx*ptr.vx+ptr.vy*ptr.vy)||1;
+          const proximity=(REPEL_R-d)/REPEL_R;
+          const strength=PUSH*proximity*(1+Math.min(mv*0.1,2.2));
+          const ndx=ptr.vx/mv, ndy=ptr.vy/mv;
+          this.vx+=ndx*strength + (Math.random()-0.5)*3.5;
+          this.vy+=ndy*strength + (Math.random()-0.5)*3.5;
+        }
+      }
+
+      // Ressort
       const tdx=this.tx-this.x, tdy=this.ty-this.y;
       const distSq=tdx*tdx+tdy*tdy;
-      this.vx += tdx*SPRING;
-      this.vy += tdy*SPRING;
+      this.vx+=tdx*SPRING; this.vy+=tdy*SPRING;
 
-      // amortissement — plus fort quand proche pour stopper net
-      const fric = distSq < 16 ? 0.45 : FRICTION;
-      this.vx *= fric; this.vy *= fric;
+      // Friction — extra forte si proche
+      const fric = distSq<9 ? 0.4 : FRICTION;
+      this.vx*=fric; this.vy*=fric;
 
-      // snap final si ultra proche et quasi immobile
-      if (distSq < 1 && this.vx*this.vx+this.vy*this.vy < 0.01) {
+      // Snap net
+      if (distSq<0.5 && this.vx*this.vx+this.vy*this.vy<0.005) {
         this.x=this.tx; this.y=this.ty; this.vx=0; this.vy=0;
       } else {
         this.x+=this.vx; this.y+=this.vy;
       }
 
-      this.spd = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
-      if (this.a < this.baseA) this.a += (this.baseA-this.a)*0.06;
+      this.spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+      if (this.a<this.baseA) this.a+=(this.baseA-this.a)*0.06;
     }
 
     draw() {
-      if (this.a < 0.01) return;
-      const t   = Math.min(this.spd/14, 1);
-      const hue = this.bh*(1-t) + 140*t;
-      const lit = this.bl*(1-t) + 65*t;
-      const r   = this.r * this.scale3d;
-      ctx.globalAlpha = this.a * (0.4 + this.scale3d*0.6);
-      ctx.fillStyle   = `hsl(${hue|0},90%,${lit|0}%)`;
+      if (this.a<0.01) return;
+      const t=Math.min(this.spd/12,1);
+      const hue=this.bh*(1-t)+140*t;
+      const lit=this.bl*(1-t)+65*t;
+      const r=Math.max(this.r*this.scale3d, 0.3);
+      ctx.globalAlpha=this.a*(0.38+this.scale3d*0.62);
+      ctx.fillStyle=`hsl(${hue|0},${this.bs}%,${lit|0}%)`;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, Math.max(r,0.3), 0, 6.2832);
+      ctx.arc(this.x,this.y,r,0,6.2832);
       ctx.fill();
     }
   }
@@ -225,7 +398,7 @@
     octx.clearRect(0,0,W,H);
     if (!text.trim()) { activeCount=0; return; }
     const len=text.length;
-    let fs=Math.min(H*0.32, W*(len<=3?.60:len<=6?.42:len<=10?.30:len<=16?.22:.16));
+    let fs=Math.min(H*0.32,W*(len<=3?.60:len<=6?.42:len<=10?.30:len<=16?.22:.16));
     fs=Math.max(fs,24);
     octx.font=`700 ${fs}px 'Space Mono', monospace`;
     while(octx.measureText(text).width>W*0.93&&fs>20){fs-=2;octx.font=`700 ${fs}px 'Space Mono', monospace`;}
@@ -238,6 +411,8 @@
     while(pool.length<n) pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1]));
     for(let i=0;i<n;i++){
       pool[i].tx=pts[i*2]; pool[i].ty=pts[i*2+1]; pool[i].scale3d=1;
+      // re-teinte si couleur changée
+      pool[i].bh=sandColor.h; pool[i].bs=sandColor.s;
       if(pool[i].a<0.1){pool[i].x=pts[i*2];pool[i].y=pts[i*2+1];pool[i].vx=0;pool[i].vy=0;}
       pool[i].a=Math.max(pool[i].a,0.65);
     }
@@ -250,21 +425,22 @@
     clearTimeout(rasterTimer);
     rasterTimer=setTimeout(()=>{
       if(inp.value.trim()){idleMode=false;rasterize(inp.value);}
-      else{idleMode=true;buildIdle3D();}
+      else{idleMode=true;buildIdle();}
     },0);
   }
   inp.addEventListener('input',()=>{ hint.style.opacity='0'; scheduleRaster(); });
 
   // ── Loop ──────────────────────────────────────────────────
   function loop(){
-    if(mouse.x>0){stillTimer++;if(stillTimer>=STILL_DELAY)mouse.still=true;}
-    if(idleMode&&idlePts3D.length){angle+=0.007;projectIdle();}
+    if(ptr.x>0){stillTimer++;if(stillTimer>=STILL_DELAY)ptr.still=true;}
+    if(idleMode&&idlePts.length){angle+=0.007;projectIdle();}
+
     ctx.clearRect(0,0,W,H); ctx.globalAlpha=1;
-    // tri par depth pour rendu correct (back to front) en mode 3D
+
     if(idleMode){
-      // sort par scale3d croissant = plus loin d'abord
-      const active=pool.slice(0,activeCount).sort((a,b)=>a.scale3d-b.scale3d);
-      for(const p of active){p.update(true);p.draw();}
+      // tri back-to-front par scale3d
+      const slice=pool.slice(0,activeCount).sort((a,b)=>a.scale3d-b.scale3d);
+      for(const p of slice){p.update(true);p.draw();}
       for(let i=activeCount;i<pool.length;i++){pool[i].update(false);pool[i].draw();}
     } else {
       for(let i=0;i<pool.length;i++){pool[i].update(i<activeCount);pool[i].draw();}
@@ -272,7 +448,7 @@
     requestAnimationFrame(loop);
   }
 
-  buildIdle3D();
+  buildIdle();
   loop();
 })();
 </script>
