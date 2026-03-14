@@ -2,195 +2,131 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Particle Text</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&family=DM+Sans:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html{
-    touch-action:none;
-    overscroll-behavior:none;
-    -webkit-user-select:none;user-select:none;
-  }
-  body{
-    background:#050912;
-    width:100vw;height:100dvh;overflow:hidden;touch-action:none;
-    display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-    font-family:'DM Sans',sans-serif;
-    overscroll-behavior:none;
-    position:fixed;inset:0;
-  }
-  canvas{position:fixed;top:0;left:0;z-index:1;touch-action:none;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;}
+body{background:#050912;width:100vw;height:100dvh;overflow:hidden;touch-action:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-family:'DM Sans',sans-serif;overscroll-behavior:none;position:fixed;inset:0;}
+canvas{position:fixed;top:0;left:0;z-index:1;touch-action:none;}
 
-  /* ── Bottom zone ── */
-  .bottom{
-    position:relative;z-index:10;
-    width:min(720px,92vw);
-    margin-bottom:32px;
-    display:flex;flex-direction:column;gap:12px;align-items:center;
-  }
+.bottom{position:relative;z-index:10;width:min(720px,92vw);margin-bottom:28px;display:flex;flex-direction:column;gap:10px;align-items:center;}
 
-  /* ── Input bar ── */
-  .bar{
-    width:100%;display:flex;align-items:center;gap:10px;
-    background:rgba(8,16,40,0.85);
-    border:1px solid rgba(74,200,255,0.18);
-    border-radius:60px;padding:12px 16px 12px 24px;
-    backdrop-filter:blur(20px);
-    box-shadow:0 8px 40px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.03);
-    transition:border-color .3s,box-shadow .3s;
-  }
-  .bar:focus-within{
-    border-color:rgba(74,200,255,0.4);
-    box-shadow:0 8px 40px rgba(0,0,0,0.55),0 0 30px rgba(74,200,255,0.08);
-  }
-  .bar input{
-    flex:1;background:transparent;border:none;outline:none;
-    color:#ddf0ff;font-family:'DM Sans',sans-serif;
-    font-size:15px;font-weight:300;letter-spacing:.05em;caret-color:#4af3ff;
-    -webkit-user-select:text;user-select:text;touch-action:auto;
-  }
-  .bar input::placeholder{color:rgba(130,180,220,0.28);font-style:italic;}
+/* bar */
+.bar{width:100%;display:flex;align-items:center;gap:8px;background:rgba(8,16,40,0.85);border:1px solid rgba(74,200,255,0.18);border-radius:60px;padding:11px 14px 11px 22px;backdrop-filter:blur(20px);box-shadow:0 8px 40px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.03);transition:border-color .3s,box-shadow .3s;}
+.bar:focus-within{border-color:rgba(74,200,255,0.4);box-shadow:0 8px 40px rgba(0,0,0,0.55),0 0 28px rgba(74,200,255,0.08);}
+.bar input{flex:1;background:transparent;border:none;outline:none;color:#ddf0ff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:300;letter-spacing:.05em;caret-color:#4af3ff;-webkit-user-select:text;user-select:text;touch-action:auto;}
+.bar input::placeholder{color:rgba(130,180,220,0.28);font-style:italic;}
 
-  /* ── Settings toggle button ── */
-  .settings-btn{
-    flex-shrink:0;width:34px;height:34px;border-radius:50%;
-    background:rgba(74,200,255,0.08);border:1px solid rgba(74,200,255,0.2);
-    cursor:pointer;display:flex;align-items:center;justify-content:center;
-    transition:background .2s,border-color .2s;color:rgba(74,200,255,0.6);
-    font-size:15px;user-select:none;
-  }
-  .settings-btn:hover,.settings-btn.open{background:rgba(74,200,255,0.18);border-color:rgba(74,200,255,0.45);color:#4af3ff;}
+.ibtn{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:rgba(74,200,255,0.07);border:1px solid rgba(74,200,255,0.18);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s;color:rgba(74,200,255,0.55);font-size:14px;user-select:none;}
+.ibtn:hover,.ibtn.open{background:rgba(74,200,255,0.18);border-color:rgba(74,200,255,0.45);color:#4af3ff;}
 
-  /* ── Settings panel ── */
-  .panel{
-    width:100%;
-    background:rgba(6,12,32,0.92);
-    border:1px solid rgba(74,200,255,0.14);
-    border-radius:18px;padding:16px 20px;
-    backdrop-filter:blur(22px);
-    box-shadow:0 8px 40px rgba(0,0,0,0.5);
-    display:none;flex-direction:column;gap:14px;
-  }
-  .panel.open{display:flex;}
-  .panel-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .panel-label{
-    font-size:10px;letter-spacing:.15em;text-transform:uppercase;
-    color:rgba(74,200,255,0.4);font-family:'Space Mono',monospace;
-    min-width:80px;
-  }
-  .quality-btns{display:flex;gap:7px;}
-  .qbtn{
-    padding:4px 12px;border-radius:20px;cursor:pointer;font-size:10px;
-    letter-spacing:.1em;text-transform:uppercase;font-family:'Space Mono',monospace;
-    border:1px solid rgba(74,200,255,0.2);color:rgba(74,200,255,0.45);
-    background:transparent;transition:all .2s;
-  }
-  .qbtn:hover{border-color:rgba(74,200,255,0.5);color:rgba(74,200,255,0.8);}
-  .qbtn.active{background:rgba(74,200,255,0.15);border-color:rgba(74,200,255,0.6);color:#4af3ff;}
+/* panel */
+.panel{width:100%;background:rgba(5,10,28,0.95);border:1px solid rgba(74,200,255,0.13);border-radius:18px;padding:14px 18px;backdrop-filter:blur(24px);box-shadow:0 8px 40px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:12px;max-height:72vh;overflow-y:auto;}
+.panel.open{display:flex;}
+.panel::-webkit-scrollbar{width:3px;}
+.panel::-webkit-scrollbar-thumb{background:rgba(74,200,255,0.2);border-radius:3px;}
 
-  /* ── Slider ── */
-  .slider-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:160px;}
-  .slider-val{
-    font:700 10px/1 'Space Mono',monospace;
-    color:#4af3ff;min-width:34px;text-align:right;
-  }
-  input[type=range]{
-    -webkit-appearance:none;appearance:none;
-    flex:1;height:3px;border-radius:3px;outline:none;cursor:pointer;
-    background:linear-gradient(to right,#4af3ff var(--pct,50%),rgba(74,200,255,0.15) var(--pct,50%));
-  }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
-    background:#4af3ff;border:2px solid #050912;box-shadow:0 0 6px rgba(74,243,255,0.5);
-  }
-  input[type=range]::-moz-range-thumb{
-    width:14px;height:14px;border-radius:50%;
-    background:#4af3ff;border:2px solid #050912;
-  }
+.panel-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.panel-label{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:rgba(74,200,255,0.4);font-family:'Space Mono',monospace;min-width:78px;flex-shrink:0;}
 
-  /* ── Toggle ── */
-  .toggle-wrap{display:flex;align-items:center;gap:10px;}
-  .toggle{position:relative;width:36px;height:20px;flex-shrink:0;}
-  .toggle input{opacity:0;width:0;height:0;position:absolute;}
-  .toggle-track{
-    position:absolute;inset:0;border-radius:20px;
-    background:rgba(74,200,255,0.12);border:1px solid rgba(74,200,255,0.2);
-    transition:background .2s,border-color .2s;cursor:pointer;
-  }
-  .toggle input:checked+.toggle-track{background:rgba(74,200,255,0.3);border-color:rgba(74,200,255,0.6);}
-  .toggle-thumb{
-    position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;
-    background:rgba(74,200,255,0.5);transition:left .2s,background .2s;pointer-events:none;
-  }
-  .toggle input:checked~.toggle-thumb{left:19px;background:#4af3ff;}
-  .toggle-label{font:300 11px/1 'DM Sans',sans-serif;color:rgba(74,200,255,0.6);}
-  .swatches{display:flex;gap:7px;flex-wrap:wrap;}
-  .swatch{
-    width:22px;height:22px;border-radius:50%;cursor:pointer;
-    border:2px solid transparent;transition:transform .15s,border-color .15s;
-    flex-shrink:0;
-  }
-  .swatch:hover{transform:scale(1.2);}
-  .swatch.active{border-color:#fff;transform:scale(1.15);}
+/* quality btns */
+.btn-group{display:flex;gap:6px;}
+.qbtn{padding:4px 10px;border-radius:20px;cursor:pointer;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-family:'Space Mono',monospace;border:1px solid rgba(74,200,255,0.2);color:rgba(74,200,255,0.45);background:transparent;transition:all .18s;}
+.qbtn:hover{border-color:rgba(74,200,255,0.5);color:rgba(74,200,255,0.8);}
+.qbtn.active{background:rgba(74,200,255,0.15);border-color:rgba(74,200,255,0.6);color:#4af3ff;}
 
-  .hint{
-    position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
-    z-index:10;color:rgba(74,200,255,0.2);
-    font:300 10px/1 'DM Sans',sans-serif;letter-spacing:.18em;text-transform:uppercase;
-    pointer-events:none;transition:opacity .6s;white-space:nowrap;
-  }
+/* slider */
+.slider-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:140px;}
+.slider-val{font:700 9px/1 'Space Mono',monospace;color:#4af3ff;min-width:32px;text-align:right;}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:3px;outline:none;cursor:pointer;background:linear-gradient(to right,#4af3ff var(--pct,50%),rgba(74,200,255,0.12) var(--pct,50%));}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#4af3ff;border:2px solid #050912;box-shadow:0 0 5px rgba(74,243,255,0.45);}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#4af3ff;border:2px solid #050912;}
+
+/* toggle */
+.toggle-wrap{display:flex;align-items:center;gap:8px;}
+.toggle{position:relative;width:34px;height:18px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-track{position:absolute;inset:0;border-radius:18px;background:rgba(74,200,255,0.1);border:1px solid rgba(74,200,255,0.2);transition:background .2s;cursor:pointer;}
+.toggle input:checked+.toggle-track{background:rgba(74,200,255,0.28);border-color:rgba(74,200,255,0.55);}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:10px;height:10px;border-radius:50%;background:rgba(74,200,255,0.45);transition:left .18s,background .18s;pointer-events:none;}
+.toggle input:checked~.toggle-thumb{left:19px;background:#4af3ff;}
+.toggle-label{font:300 11px/1 'DM Sans',sans-serif;color:rgba(74,200,255,0.55);}
+
+/* swatches */
+.swatches{display:flex;gap:6px;flex-wrap:wrap;}
+.swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .14s,border-color .14s;flex-shrink:0;}
+.swatch:hover{transform:scale(1.22);}
+.swatch.active{border-color:#fff;transform:scale(1.14);}
+
+/* image upload */
+.upload-label{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;border-radius:20px;cursor:pointer;font-size:9px;letter-spacing:.13em;text-transform:uppercase;font-family:'Space Mono',monospace;border:1px solid rgba(74,200,255,0.28);color:rgba(74,200,255,0.65);background:rgba(74,200,255,0.05);transition:all .18s;}
+.upload-label:hover{background:rgba(74,200,255,0.14);color:#4af3ff;border-color:rgba(74,200,255,0.5);}
+.clear-btn{padding:5px 14px;border-radius:20px;cursor:pointer;font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-family:'Space Mono',monospace;border:1px solid rgba(255,80,80,0.28);color:rgba(255,120,120,0.6);background:transparent;transition:all .18s;}
+.clear-btn:hover{background:rgba(255,80,80,0.1);border-color:rgba(255,80,80,0.6);color:#ff6060;}
+
+/* divider */
+.divider{height:1px;background:rgba(74,200,255,0.07);margin:2px 0;}
+
+.hint{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);z-index:10;color:rgba(74,200,255,0.18);font:300 10px/1 'DM Sans',sans-serif;letter-spacing:.18em;text-transform:uppercase;pointer-events:none;transition:opacity .6s;white-space:nowrap;}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <p class="hint" id="hint">Commencez à taper…</p>
+<input type="file" id="fileInput" accept="image/*" style="display:none">
 
 <div class="bottom">
-  <!-- Settings panel (above bar) -->
   <div class="panel" id="panel">
+
     <div class="panel-row">
       <span class="panel-label">Qualité</span>
-      <div class="quality-btns">
+      <div class="btn-group">
         <button class="qbtn" data-q="low">Bas</button>
         <button class="qbtn active" data-q="med">Moyen</button>
         <button class="qbtn" data-q="high">HD</button>
       </div>
     </div>
+
+    <div class="divider"></div>
+
     <div class="panel-row">
       <span class="panel-label">Curseur</span>
       <div class="slider-wrap">
-        <input type="range" id="cursorSlider" min="10" max="160" value="48">
-        <span class="slider-val" id="cursorVal">48</span>
+        <input type="range" id="sldCursor" min="10" max="160" value="48">
+        <span class="slider-val" id="valCursor">48</span>
       </div>
     </div>
     <div class="panel-row">
       <span class="panel-label">Densité</span>
       <div class="slider-wrap">
-        <input type="range" id="densitySlider" min="5" max="100" value="100">
-        <span class="slider-val" id="densityVal">100%</span>
+        <input type="range" id="sldDensity" min="5" max="100" value="100">
+        <span class="slider-val" id="valDensity">100%</span>
       </div>
     </div>
     <div class="panel-row">
       <span class="panel-label">Retour</span>
       <div class="slider-wrap">
-        <input type="range" id="returnSlider" min="0" max="100" value="20">
-        <span class="slider-val" id="returnVal">20%</span>
+        <input type="range" id="sldReturn" min="0" max="100" value="20">
+        <span class="slider-val" id="valReturn">20%</span>
       </div>
     </div>
+
+    <div class="divider"></div>
+
     <div class="panel-row">
       <span class="panel-label">Rotation 3D</span>
       <div class="toggle-wrap">
-        <label class="toggle">
-          <input type="checkbox" id="toggle3d">
-          <div class="toggle-track"></div>
-          <div class="toggle-thumb"></div>
-        </label>
+        <label class="toggle"><input type="checkbox" id="tog3d"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         <span class="toggle-label">Texte qui tourne</span>
       </div>
     </div>
+
+    <div class="divider"></div>
+
     <div class="panel-row">
       <span class="panel-label">Sable</span>
       <div class="swatches" id="sandSwatches"></div>
@@ -199,12 +135,23 @@
       <span class="panel-label">Fond</span>
       <div class="swatches" id="bgSwatches"></div>
     </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-row">
+      <span class="panel-label">Image</span>
+      <label class="upload-label" for="fileInput">📷 Choisir une photo</label>
+    </div>
+    <div class="panel-row" id="imgClearRow" style="display:none">
+      <span class="panel-label"></span>
+      <button class="clear-btn" id="btnClearImg">✕ Retirer la photo</button>
+    </div>
+
   </div>
 
-  <!-- Input bar -->
   <div class="bar">
     <input id="inp" type="text" placeholder="Votre texte ici…" autocomplete="off" spellcheck="false">
-    <div class="settings-btn" id="settingsBtn" title="Couleurs">⚙</div>
+    <div class="ibtn" id="settingsBtn">⚙</div>
   </div>
 </div>
 
@@ -215,12 +162,263 @@
   const inp    = document.getElementById('inp');
   const hint   = document.getElementById('hint');
   const panel  = document.getElementById('panel');
-  const settingsBtn = document.getElementById('settingsBtn');
 
   let W, H;
+  const off = document.createElement('canvas'), octx = off.getContext('2d');
 
-  // ── Couleurs configurables ─────────────────────────────────
-  const SAND_COLORS = [
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    off.width = W; off.height = H;
+  }
+  window.addEventListener('resize', () => { resize(); scheduleRaster(); });
+  resize();
+
+  // ── Pointer ───────────────────────────────────────────────
+  const ptr = { x:-9999,y:-9999,px:-9999,py:-9999,vx:0,vy:0,still:false };
+  let stillTimer = 0;
+  function onMove(cx,cy){ ptr.px=ptr.x;ptr.py=ptr.y;ptr.vx=cx-ptr.x;ptr.vy=cy-ptr.y;ptr.x=cx;ptr.y=cy;ptr.still=false;stillTimer=0; }
+  function onEnd(){ ptr.px=ptr.x;ptr.py=ptr.y;ptr.x=-9999;ptr.y=-9999;ptr.still=false;stillTimer=0; }
+  window.addEventListener('mousemove',e=>onMove(e.clientX,e.clientY));
+  window.addEventListener('mouseleave',onEnd);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];ptr.px=t.clientX;ptr.py=t.clientY;ptr.x=t.clientX;ptr.y=t.clientY;},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();onMove(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+  canvas.addEventListener('touchend',e=>{e.preventDefault();onEnd();},{passive:false});
+  canvas.addEventListener('touchcancel',e=>{e.preventDefault();onEnd();},{passive:false});
+  document.addEventListener('touchmove',e=>{ if(e.touches.length>1||!e.target.closest('input'))e.preventDefault(); },{passive:false});
+  document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
+
+  // ── Quality ───────────────────────────────────────────────
+  const QUALITY = {
+    low:  {spacing:6,  rBase:2.2,  idleSpacing:8, idleLayers:4, idleR:3.5},
+    med:  {spacing:3,  rBase:0.9,  idleSpacing:7, idleLayers:5, idleR:2.8},
+    high: {spacing:2,  rBase:0.55, idleSpacing:5, idleLayers:6, idleR:2.2},
+  };
+  let quality = QUALITY.med;
+
+  // ── Physics ───────────────────────────────────────────────
+  let REPEL_R = 48, SPRING = 0.16, FRICTION = 0.78;
+  let density = 1.0, text3DMode = false;
+  const ATTRACT_R=100,PUSH=26,PULL=0.045,STILL_DELAY=36,FOCAL=900;
+
+  // ── Pool ──────────────────────────────────────────────────
+  const pool = []; let activeCount = 0;
+  let imageMode = false;
+
+  // ── 3D CENTRAX ────────────────────────────────────────────
+  let angle=0, idleMode=true, idlePts=[];
+
+  function buildIdle(){
+    const iSp=quality.idleSpacing, iLay=quality.idleLayers;
+    octx.clearRect(0,0,W,H);
+    let fs=Math.min(H*0.28,W*0.52);
+    octx.font=`700 ${fs}px 'Space Mono',monospace`;
+    while(octx.measureText('CENTRAX').width>W*0.84&&fs>20){fs-=2;octx.font=`700 ${fs}px 'Space Mono',monospace`;}
+    const sw=Math.max(fs*0.07,4);
+    octx.lineWidth=sw;octx.lineJoin='round';
+    octx.strokeStyle='#fff';octx.fillStyle='#fff';
+    octx.textAlign='left';octx.textBaseline='middle';
+    const letters='CENTRAX'.split('');
+    const spacing=fs*0.10;
+    const cw=letters.map(l=>octx.measureText(l).width);
+    const totalW=cw.reduce((a,b)=>a+b,0)+spacing*(letters.length-1);
+    let cx=W/2-totalW/2;
+    for(let i=0;i<letters.length;i++){octx.strokeText(letters[i],cx,H/2);octx.fillText(letters[i],cx,H/2);cx+=cw[i]+spacing;}
+    const d=octx.getImageData(0,0,W,H).data;
+    const surface=[];
+    for(let y=0;y<H;y+=iSp)for(let x=0;x<W;x+=iSp)if(d[(y*W+x)*4+3]>128)surface.push({ox:x-W/2,oy:y-H/2});
+    octx.clearRect(0,0,W,H);
+    const depth=fs*0.28;
+    idlePts=[];
+    for(const{ox,oy}of surface)for(let l=0;l<iLay;l++){const oz=-depth/2+l*(depth/(iLay-1));idlePts.push({ox,oy,oz});}
+  }
+
+  function projectIdle(){
+    const n=idlePts.length;
+    while(pool.length<n)pool.push(new Particle(W/2,H/2,true));
+    const cosA=Math.cos(angle),sinA=Math.sin(angle);
+    for(let i=0;i<n;i++){
+      const{ox,oy,oz}=idlePts[i];
+      const rx=ox*cosA-oz*sinA,rz=ox*sinA+oz*cosA;
+      const sc=FOCAL/(FOCAL+rz);
+      pool[i].tx=W/2+rx*sc;pool[i].ty=H/2+oy*sc;pool[i].scale3d=sc;
+      if(pool[i].a<0.05){pool[i].x=pool[i].tx;pool[i].y=pool[i].ty;pool[i].vx=0;pool[i].vy=0;}
+      pool[i].a=Math.max(pool[i].a,0.6);
+    }
+    activeCount=n;
+  }
+
+  // ── Particle ──────────────────────────────────────────────
+  class Particle{
+    constructor(tx,ty,isIdle=false){
+      this.x=tx;this.y=ty;this.vx=0;this.vy=0;this.tx=tx;this.ty=ty;
+      const rb=isIdle?quality.idleR:quality.rBase;
+      this.r=rb*(0.7+Math.random()*0.6);
+      this.bh=sandColor.h;this.bs=sandColor.s;
+      this.bl=sandColor.lMin+Math.random()*(sandColor.lMax-sandColor.lMin);
+      this.a=0.65+Math.random()*0.3;this.baseA=this.a;
+      this.spd=0;this.scale3d=1;
+      this.customColor=null;
+    }
+    update(active){
+      if(!active){this.vx*=0.95;this.vy*=0.95;this.x+=this.vx;this.y+=this.vy;this.a*=0.95;return;}
+      let ex=ptr.x,ey=ptr.y;
+      if(ptr.px>0&&ptr.x>0){
+        const sdx=ptr.x-ptr.px,sdy=ptr.y-ptr.py,sl2=sdx*sdx+sdy*sdy;
+        if(sl2>0){let t=((this.x-ptr.px)*sdx+(this.y-ptr.py)*sdy)/sl2;t=Math.max(0,Math.min(1,t));ex=ptr.px+t*sdx;ey=ptr.py+t*sdy;}
+      }
+      const dx=ex-this.x,dy=ey-this.y,d2=dx*dx+dy*dy,d=Math.sqrt(d2)||1;
+      if(ptr.x>0){
+        if(ptr.still&&d<ATTRACT_R){const f=((ATTRACT_R-d)/ATTRACT_R)*PULL;this.vx+=dx/d*f*d*0.06;this.vy+=dy/d*f*d*0.06;}
+        else if(!ptr.still&&d<REPEL_R&&Math.random()<density){
+          const mv=Math.sqrt(ptr.vx*ptr.vx+ptr.vy*ptr.vy)||1;
+          const prox=(REPEL_R-d)/REPEL_R;
+          const str=PUSH*prox*(1+Math.min(mv*0.1,2.2));
+          this.vx+=ptr.vx/mv*str+(Math.random()-0.5)*3;
+          this.vy+=ptr.vy/mv*str+(Math.random()-0.5)*3;
+        }
+      }
+      const tdx=this.tx-this.x,tdy=this.ty-this.y,dsq=tdx*tdx+tdy*tdy;
+      this.vx+=tdx*SPRING;this.vy+=tdy*SPRING;
+      const fric=dsq<9?0.4:FRICTION;
+      this.vx*=fric;this.vy*=fric;
+      if(dsq<0.5&&this.vx*this.vx+this.vy*this.vy<0.005){this.x=this.tx;this.y=this.ty;this.vx=0;this.vy=0;}
+      else{this.x+=this.vx;this.y+=this.vy;}
+      this.spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+      if(this.a<this.baseA)this.a+=(this.baseA-this.a)*0.06;
+    }
+    draw(){
+      if(this.a<0.01)return;
+      let col;
+      if(this.customColor){col=this.customColor;}
+      else{const t=Math.min(this.spd/12,1);col=`hsl(${(this.bh*(1-t)+140*t)|0},${this.bs}%,${(this.bl*(1-t)+65*t)|0}%)`;}
+      ctx.globalAlpha=this.a*(0.38+this.scale3d*0.62);
+      ctx.fillStyle=col;
+      ctx.beginPath();ctx.arc(this.x,this.y,Math.max(this.r*this.scale3d,0.3),0,6.2832);ctx.fill();
+    }
+  }
+
+  // ── Text rasterize ────────────────────────────────────────
+  let textPts3D=[],textAngle=0;
+
+  function wrapText(text,fs){
+    octx.font=`700 ${fs}px 'Space Mono',monospace`;
+    const mw=W*0.92;
+    if(octx.measureText(text).width<=mw)return[text];
+    const words=text.split(' ');if(words.length===1)return[text];
+    const lines=[];let cur='';
+    for(const w of words){const test=cur?cur+' '+w:w;if(octx.measureText(test).width>mw&&cur){lines.push(cur);cur=w;}else cur=test;}
+    if(cur)lines.push(cur);return lines;
+  }
+
+  function rasterize(text){
+    octx.clearRect(0,0,W,H);
+    if(!text.trim()){activeCount=0;return;}
+    let fs=Math.min(H*0.85,W*1.2);fs=Math.max(fs,20);
+    let lines;
+    while(fs>12){
+      lines=wrapText(text,fs);
+      octx.font=`700 ${fs}px 'Space Mono',monospace`;
+      const lh=fs*1.15,th=lines.length*lh,mlw=Math.max(...lines.map(l=>octx.measureText(l).width));
+      if(mlw<=W*0.92&&th<=H*0.82)break;
+      fs-=2;
+    }
+    octx.font=`700 ${fs}px 'Space Mono',monospace`;
+    octx.fillStyle='#fff';octx.textAlign='center';octx.textBaseline='middle';
+    const lh=fs*1.15,th=lines.length*lh,sY=H*0.46-th/2+lh/2;
+    for(let i=0;i<lines.length;i++)octx.fillText(lines[i],W/2,sY+i*lh);
+    const d=octx.getImageData(0,0,W,H).data;
+    const pts=[];const sp=quality.spacing;
+    for(let y=0;y<H;y+=sp)for(let x=0;x<W;x+=sp)if(d[(y*W+x)*4+3]>128)pts.push(x,y);
+    textPts3D=[];
+    const iLay=quality.idleLayers,depth=fs*0.28;
+    for(let i=0;i<pts.length;i+=2){
+      const ox=pts[i]-W/2,oy=pts[i+1]-H/2;
+      if(text3DMode){for(let l=0;l<iLay;l++){const oz=-depth/2+l*(depth/(iLay-1));textPts3D.push({ox,oy,oz});}}
+      else textPts3D.push({ox,oy,oz:0});
+    }
+    textAngle=0;
+    const n=pts.length>>1;
+    let rBase=quality.rBase;
+    if(text3DMode){const cf=Math.max(0.3,1-(text.trim().length-1)*0.06),qf=quality.spacing/3;rBase=Math.max(quality.rBase,quality.rBase*cf*qf*3.5);}
+    const pt=text3DMode?textPts3D.length:n;
+    while(pool.length<pt)pool.push(new Particle(pts[(pool.length%n)*2]??W/2,pts[(pool.length%n)*2+1]??H/2,false));
+    for(let i=0;i<pt;i++){
+      const tx=text3DMode?W/2+textPts3D[i].ox:pts[i*2];
+      const ty=text3DMode?H/2+textPts3D[i].oy:pts[i*2+1];
+      pool[i].tx=tx;pool[i].ty=ty;pool[i].scale3d=1;
+      pool[i].bh=sandColor.h;pool[i].bs=sandColor.s;
+      pool[i].customColor=null;
+      pool[i].r=rBase*(0.7+Math.random()*0.6);
+      if(pool[i].a<0.1){pool[i].x=tx;pool[i].y=ty;pool[i].vx=0;pool[i].vy=0;}
+      pool[i].a=Math.max(pool[i].a,0.65);
+    }
+    activeCount=pt;
+  }
+
+  function projectText3D(){
+    const n=textPts3D.length;if(!n)return;
+    while(pool.length<n)pool.push(new Particle(W/2,H/2,false));
+    const cosA=Math.cos(textAngle),sinA=Math.sin(textAngle);
+    for(let i=0;i<n;i++){
+      const{ox,oy,oz}=textPts3D[i];
+      const rx=ox*cosA-oz*sinA,rz=ox*sinA+oz*cosA,sc=FOCAL/(FOCAL+rz);
+      pool[i].tx=W/2+rx*sc;pool[i].ty=H/2+oy*sc;pool[i].scale3d=sc;
+      if(pool[i].a<0.05){pool[i].x=pool[i].tx;pool[i].y=pool[i].ty;pool[i].vx=0;pool[i].vy=0;}
+      pool[i].a=Math.max(pool[i].a,0.6);
+    }
+    activeCount=n;
+  }
+
+  // ── Image → sable ─────────────────────────────────────────
+  function loadImage(file){
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      // Fit dans 90% de l'écran en gardant le ratio
+      const scale=Math.min((W*0.9)/img.width,(H*0.72)/img.height);
+      const iw=img.width*scale, ih=img.height*scale;
+      const ix=(W-iw)/2,  iy=(H-ih)/2 - 20;
+      octx.clearRect(0,0,W,H);
+      octx.drawImage(img,ix,iy,iw,ih);
+      const data=octx.getImageData(0,0,W,H).data;
+      octx.clearRect(0,0,W,H);
+      const sp=quality.spacing;
+      const pts=[],colors=[];
+      for(let y=0;y<H;y+=sp)for(let x=0;x<W;x+=sp){
+        const idx=(y*W+x)*4;
+        if(data[idx+3]>30){ pts.push(x,y); colors.push(data[idx],data[idx+1],data[idx+2]); }
+      }
+      const n=pts.length>>1;
+      while(pool.length<n)pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1],false));
+      for(let i=0;i<n;i++){
+        pool[i].tx=pts[i*2];pool[i].ty=pts[i*2+1];pool[i].scale3d=1;
+        pool[i].customColor=`rgb(${colors[i*3]},${colors[i*3+1]},${colors[i*3+2]})`;
+        pool[i].r=quality.rBase*(0.7+Math.random()*0.6);
+        if(pool[i].a<0.1){pool[i].x=pts[i*2];pool[i].y=pts[i*2+1];pool[i].vx=0;pool[i].vy=0;}
+        pool[i].a=Math.max(pool[i].a,0.65);
+      }
+      activeCount=n; imageMode=true; idleMode=false;
+      document.getElementById('imgClearRow').style.display='flex';
+      hint.style.opacity='0';
+    };
+    img.src=url;
+  }
+
+  document.getElementById('fileInput').addEventListener('change',e=>{
+    if(e.target.files[0])loadImage(e.target.files[0]);
+  });
+  document.getElementById('btnClearImg').addEventListener('click',()=>{
+    imageMode=false;
+    pool.forEach(p=>p.customColor=null);
+    document.getElementById('imgClearRow').style.display='none';
+    if(inp.value.trim())scheduleRaster();
+    else{idleMode=true;buildIdle();}
+  });
+
+  // ── Colors ────────────────────────────────────────────────
+  const SAND_COLORS=[
     {label:'Bleu',h:210,s:90,lMin:58,lMax:82},
     {label:'Cyan',h:185,s:90,lMin:55,lMax:80},
     {label:'Violet',h:270,s:80,lMin:60,lMax:80},
@@ -237,520 +435,87 @@
     {label:'Menthe',h:160,s:60,lMin:65,lMax:80},
     {label:'Indigo',h:230,s:75,lMin:55,lMax:75},
   ];
-
-  const BG_COLORS = [
-    {label:'Nuit',val:'#050912'},
-    {label:'Noir',val:'#000000'},
-    {label:'Marine',val:'#020a1a'},
-    {label:'Prune',val:'#0e0514'},
-    {label:'Forêt',val:'#040e06'},
-    {label:'Charbon',val:'#111111'},
-    {label:'Ardoise',val:'#080c14'},
-    {label:'Cramoisi',val:'#0f0408'},
-    {label:'Gris sombre',val:'#1a1a1a'},
-    {label:'Minuit bleu',val:'#060d1e'},
+  const BG_COLORS=[
+    {label:'Nuit',val:'#050912'},{label:'Noir',val:'#000000'},
+    {label:'Marine',val:'#020a1a'},{label:'Prune',val:'#0e0514'},
+    {label:'Forêt',val:'#040e06'},{label:'Charbon',val:'#111111'},
+    {label:'Ardoise',val:'#080c14'},{label:'Cramoisi',val:'#0f0408'},
+    {label:'Gris',val:'#1a1a1a'},{label:'Minuit',val:'#060d1e'},
   ];
+  let sandColor=SAND_COLORS[0];
 
-  let sandColor  = SAND_COLORS[0];
-  let bgColor    = BG_COLORS[0].val;
-
-  // ── Build swatches ─────────────────────────────────────────
-  function buildSwatches() {
-    const sc = document.getElementById('sandSwatches');
-    const bc = document.getElementById('bgSwatches');
-    sc.innerHTML = ''; bc.innerHTML = '';
-
-    SAND_COLORS.forEach((c, i) => {
-      const el = document.createElement('div');
-      el.className = 'swatch' + (i===0?' active':'');
-      el.style.background = `hsl(${c.h},${c.s}%,${(c.lMin+c.lMax)/2}%)`;
-      el.title = c.label;
-      el.addEventListener('click', () => {
-        sandColor = c;
-        sc.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
-        el.classList.add('active');
-        // re-teinter les particules existantes
-        pool.forEach(p => {
-          p.bh = c.h; p.bs = c.s;
-          p.bl = c.lMin + Math.random()*(c.lMax-c.lMin);
-        });
+  function buildSwatches(){
+    const sc=document.getElementById('sandSwatches'),bc=document.getElementById('bgSwatches');
+    sc.innerHTML='';bc.innerHTML='';
+    SAND_COLORS.forEach((c,i)=>{
+      const el=document.createElement('div');
+      el.className='swatch'+(i===0?' active':'');
+      el.style.background=`hsl(${c.h},${c.s}%,${(c.lMin+c.lMax)/2}%)`;
+      el.title=c.label;
+      el.addEventListener('click',()=>{
+        sandColor=c;sc.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));el.classList.add('active');
+        pool.forEach(p=>{if(!p.customColor){p.bh=c.h;p.bs=c.s;p.bl=c.lMin+Math.random()*(c.lMax-c.lMin);}});
       });
       sc.appendChild(el);
     });
-
-    BG_COLORS.forEach((c, i) => {
-      const el = document.createElement('div');
-      el.className = 'swatch' + (i===0?' active':'');
-      el.style.background = c.val;
-      el.style.border = c.val==='#000000'?'2px solid #333':'';
-      el.title = c.label;
-      el.addEventListener('click', () => {
-        bgColor = c.val;
-        document.body.style.background = bgColor;
-        bc.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
-        el.classList.add('active');
-      });
+    BG_COLORS.forEach((c,i)=>{
+      const el=document.createElement('div');
+      el.className='swatch'+(i===0?' active':'');
+      el.style.background=c.val;
+      if(c.val==='#000000')el.style.border='2px solid #333';
+      el.title=c.label;
+      el.addEventListener('click',()=>{document.body.style.background=c.val;bc.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));el.classList.add('active');});
       bc.appendChild(el);
     });
   }
   buildSwatches();
 
-  settingsBtn.addEventListener('click', () => {
-    const open = panel.classList.toggle('open');
-    settingsBtn.classList.toggle('open', open);
+  // ── Controls ──────────────────────────────────────────────
+  function mkSlider(id,valId,unit,cb){
+    const sl=document.getElementById(id),vl=document.getElementById(valId);
+    function upd(){const v=+sl.value;sl.style.setProperty('--pct',((v-+sl.min)/(+sl.max-+sl.min)*100).toFixed(1)+'%');vl.textContent=v+unit;cb(v);}
+    sl.addEventListener('input',upd);upd();
+  }
+  mkSlider('sldCursor','valCursor','',v=>REPEL_R=v);
+  mkSlider('sldDensity','valDensity','%',v=>density=v/100);
+  mkSlider('sldReturn','valReturn','%',v=>{const t=v/100;SPRING=0.55*Math.pow(0.014,t);FRICTION=0.55+t*0.425;});
+
+  document.querySelectorAll('.qbtn[data-q]').forEach(b=>b.addEventListener('click',()=>{
+    quality=QUALITY[b.dataset.q];
+    document.querySelectorAll('.qbtn[data-q]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    if(imageMode)return;
+    if(idleMode)buildIdle();else scheduleRaster();
+  }));
+
+  document.getElementById('tog3d').addEventListener('change',e=>{
+    text3DMode=e.target.checked;
+    if(!idleMode&&!imageMode&&inp.value.trim())scheduleRaster();
   });
 
-  // ── Resize ────────────────────────────────────────────────
-  function resize() {
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-    off.width = W; off.height = H;
-  }
-  window.addEventListener('resize', () => { resize(); scheduleRaster(); });
-
-  // ── Mouse / Touch unifié ──────────────────────────────────
-  // On garde la DERNIÈRE position ET la précédente pour faire le sweep segment
-  const ptr = { x:-9999, y:-9999, px:-9999, py:-9999,
-                vx:0, vy:0, down:false, still:false };
-  let stillTimer = 0;
-
-  function onMove(cx, cy) {
-    ptr.px = ptr.x; ptr.py = ptr.y;
-    ptr.vx = cx - ptr.x; ptr.vy = cy - ptr.y;
-    ptr.x  = cx; ptr.y  = cy;
-    ptr.still = false; stillTimer = 0;
-  }
-  function onEnd() {
-    ptr.px = ptr.x; ptr.py = ptr.y;
-    ptr.x = -9999; ptr.y = -9999;
-    ptr.still = false; stillTimer = 0; ptr.down = false;
-  }
-
-  window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-  window.addEventListener('mouseleave', onEnd);
-
-  // Touch — preventDefault bloque scroll ET zoom, mais seulement sur le canvas
-  canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    const t = e.touches[0];
-    ptr.px = t.clientX; ptr.py = t.clientY;
-    ptr.x  = t.clientX; ptr.y  = t.clientY;
-    ptr.down = true;
-  }, {passive:false});
-  canvas.addEventListener('touchmove', e => {
-    e.preventDefault();
-    const t = e.touches[0];
-    onMove(t.clientX, t.clientY);
-  }, {passive:false});
-  canvas.addEventListener('touchend', e => { e.preventDefault(); onEnd(); }, {passive:false});
-  canvas.addEventListener('touchcancel', e => { e.preventDefault(); onEnd(); }, {passive:false});
-
-  // Bloquer pinch-zoom et scroll sur tout le document
-  document.addEventListener('touchmove', e => { if(e.touches.length>1||!e.target.closest('input')) e.preventDefault(); }, {passive:false});
-  document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
-  document.addEventListener('gesturechange', e => e.preventDefault(), {passive:false});
-
-  // ── Qualité ───────────────────────────────────────────────
-  // spacing = grille d'échantillonnage (petit = dense = plus de particules)
-  // rBase   = rayon de base des billes
-  const QUALITY = {
-    low:  { spacing: 6,  rBase: 2.2, idleSpacing: 8,  idleLayers: 4, idleR: 3.5 },
-    med:  { spacing: 3,  rBase: 0.9, idleSpacing: 7,  idleLayers: 5, idleR: 2.8 },
-    high: { spacing: 2,  rBase: 0.55,idleSpacing: 5,  idleLayers: 6, idleR: 2.2 },
-  };
-  let quality = QUALITY.med;
-
-  document.querySelectorAll('.qbtn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      quality = QUALITY[btn.dataset.q];
-      document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      // rebuild
-      if (idleMode) buildIdle();
-      else scheduleRaster();
-    });
+  document.getElementById('settingsBtn').addEventListener('click',()=>{
+    const o=panel.classList.toggle('open');
+    document.getElementById('settingsBtn').classList.toggle('open',o);
   });
 
-  // ── Physics ───────────────────────────────────────────────
-  let  REPEL_R    = 48;
-  const ATTRACT_R = 100;
-  const PUSH      = 26;
-  const PULL      = 0.045;
-  let   SPRING    = 0.16;   // contrôlé par slider retour
-  let   FRICTION  = 0.78;
-  const STILL_DELAY=36;
-  const FOCAL     = 900;
-
-  let density3d   = 1.0;
-  let text3DMode  = false;
-  let textAngle   = 0;
-  let textPts3D   = [];
-
-  // ── Slider curseur ────────────────────────────────────────
-  const cursorSlider = document.getElementById('cursorSlider');
-  const cursorVal    = document.getElementById('cursorVal');
-  function updateCursorSlider() {
-    REPEL_R = +cursorSlider.value;
-    cursorVal.textContent = REPEL_R;
-    const pct = ((REPEL_R-10)/(160-10)*100).toFixed(1);
-    cursorSlider.style.setProperty('--pct', pct+'%');
-  }
-  cursorSlider.addEventListener('input', updateCursorSlider);
-  updateCursorSlider();
-
-  // ── Slider densité ────────────────────────────────────────
-  const densitySlider = document.getElementById('densitySlider');
-  const densityVal    = document.getElementById('densityVal');
-  function updateDensitySlider() {
-    density3d = +densitySlider.value / 100;
-    densityVal.textContent = densitySlider.value + '%';
-    const pct = ((+densitySlider.value-5)/(100-5)*100).toFixed(1);
-    densitySlider.style.setProperty('--pct', pct+'%');
-  }
-  densitySlider.addEventListener('input', updateDensitySlider);
-  updateDensitySlider();
-
-  // ── Slider retour ─────────────────────────────────────────
-  // 0%  → retour quasi instantané  (spring fort, friction forte)
-  // 20% → valeurs actuelles
-  // 100%→ retour très lent/flottant (spring mou, friction faible)
-  const returnSlider = document.getElementById('returnSlider');
-  const returnVal    = document.getElementById('returnVal');
-  function updateReturnSlider() {
-    const v = +returnSlider.value / 100; // 0..1
-    // spring : 0.55 (instant) → 0.16 (20%) → 0.008 (100%)
-    SPRING   = 0.55 * Math.pow(0.014, v);
-    // friction : 0.55 (instant) → 0.78 (20%) → 0.975 (100%)
-    FRICTION = 0.55 + v * 0.425;
-    returnVal.textContent = returnSlider.value + '%';
-    const pct = v * 100;
-    returnSlider.style.setProperty('--pct', pct+'%');
-  }
-  returnSlider.addEventListener('input', updateReturnSlider);
-  updateReturnSlider();
-
-  // ── Toggle 3D texte ───────────────────────────────────────
-  const toggle3d = document.getElementById('toggle3d');
-  toggle3d.addEventListener('change', () => {
-    text3DMode = toggle3d.checked;
-    if (!idleMode && inp.value.trim()) scheduleRaster();
-  });
-
-  const pool = []; let activeCount = 0;
-  const off = document.createElement('canvas'), octx = off.getContext('2d');
-  resize();
-  let angle = 0, idleMode = true;
-  let idlePts = []; // [{ox, oy, oz}]
-
-  function buildIdle() {
-    const iSp  = quality.idleSpacing;
-    const iLay = quality.idleLayers;
-
-    octx.clearRect(0,0,W,H);
-    let fs = Math.min(H*0.28, W*0.52);
-    octx.font = `700 ${fs}px 'Space Mono', monospace`;
-    while (octx.measureText('CENTRAX').width > W*0.84 && fs>20) { fs-=2; octx.font=`700 ${fs}px 'Space Mono', monospace`; }
-
-    const sw = Math.max(fs*0.07, 4);
-    octx.lineWidth=sw; octx.lineJoin='round';
-    octx.strokeStyle='#fff'; octx.fillStyle='#fff';
-    octx.textAlign='left'; octx.textBaseline='middle';
-
-    // Espacement entre lettres : 10% de la taille de police
-    const letters   = 'CENTRAX'.split('');
-    const spacing   = fs * 0.10;
-    const charWidths = letters.map(l => octx.measureText(l).width);
-    const totalW     = charWidths.reduce((a,b)=>a+b,0) + spacing*(letters.length-1);
-    let cx = W/2 - totalW/2;
-    for(let i=0;i<letters.length;i++){
-      octx.strokeText(letters[i], cx, H/2);
-      octx.fillText(letters[i], cx, H/2);
-      cx += charWidths[i] + spacing;
-    }
-
-    const imgData = octx.getImageData(0,0,W,H).data;
-    const surface = [];
-    for (let y=0;y<H;y+=iSp) for (let x=0;x<W;x+=iSp)
-      if (imgData[(y*W+x)*4+3]>128) surface.push({ox:x-W/2, oy:y-H/2});
-    octx.clearRect(0,0,W,H);
-
-    const depth = fs * 0.28; // épaisseur = 28% de la taille police
-    idlePts = [];
-    for (const {ox,oy} of surface) {
-      for (let l=0; l<iLay; l++) {
-        const oz = -depth/2 + l*(depth/(iLay-1));
-        idlePts.push({ox, oy, oz});
-      }
-    }
-  }
-
-  function projectIdle() {
-    const n = idlePts.length;
-    while (pool.length < n) pool.push(new Particle(W/2,H/2, true));
-    const cosA=Math.cos(angle), sinA=Math.sin(angle);
-    for (let i=0;i<n;i++) {
-      const {ox,oy,oz} = idlePts[i];
-      // Rotation Y : x' = ox·cos - oz·sin,  z' = ox·sin + oz·cos
-      const rx = ox*cosA - oz*sinA;
-      const rz = ox*sinA + oz*cosA;
-      const sc = FOCAL/(FOCAL+rz);      // perspective
-      const sx = W/2 + rx*sc;
-      const sy = H/2 + oy*sc;
-
-      pool[i].tx=sx; pool[i].ty=sy; pool[i].scale3d=sc;
-      if (pool[i].a<0.05) { pool[i].x=sx; pool[i].y=sy; pool[i].vx=0; pool[i].vy=0; }
-      pool[i].a = Math.max(pool[i].a, 0.6);
-    }
-    activeCount = n;
-  }
-
-  // ── Particle ──────────────────────────────────────────────
-  class Particle {
-    constructor(tx,ty, isIdle=false) {
-      this.x=tx; this.y=ty; this.vx=0; this.vy=0; this.tx=tx; this.ty=ty;
-      const rBase = isIdle ? quality.idleR : quality.rBase;
-      this.r   = rBase * (0.7 + Math.random()*0.6);
-      this.bh  = sandColor.h;
-      this.bs  = sandColor.s;
-      this.bl  = sandColor.lMin + Math.random()*(sandColor.lMax-sandColor.lMin);
-      this.a   = 0.65 + Math.random()*0.3;
-      this.baseA = this.a;
-      this.spd = 0;
-      this.scale3d = 1;
-      this.isIdle  = isIdle;
-    }
-
-    update(active) {
-      if (!active) {
-        this.vx*=0.95; this.vy*=0.95;
-        this.x+=this.vx; this.y+=this.vy;
-        this.a*=0.95; this.spd*=0.9;
-        return;
-      }
-
-      // ── Distance au SEGMENT souris (prev→cur) ──
-      // évite les cercles répétés en cas de latence
-      let ex=ptr.x, ey=ptr.y;
-      if (ptr.px>0 && ptr.x>0) {
-        // point le plus proche du segment px,py→x,y
-        const segDx=ptr.x-ptr.px, segDy=ptr.y-ptr.py;
-        const segLen2=segDx*segDx+segDy*segDy;
-        if (segLen2>0) {
-          let t=((this.x-ptr.px)*segDx+(this.y-ptr.py)*segDy)/segLen2;
-          t=Math.max(0,Math.min(1,t));
-          ex=ptr.px+t*segDx; ey=ptr.py+t*segDy;
-        }
-      }
-
-      const dx=ex-this.x, dy=ey-this.y;
-      const d2=dx*dx+dy*dy, d=Math.sqrt(d2)||1;
-
-      if (ptr.x>0) {
-        if (ptr.still && d<ATTRACT_R) {
-          const f=((ATTRACT_R-d)/ATTRACT_R)*PULL;
-          this.vx+=(dx/d)*f*d*0.06;
-          this.vy+=(dy/d)*f*d*0.06;
-        } else if (!ptr.still && d<REPEL_R && Math.random()<density3d) {
-          // densité : à 20% seules 20% des billes dans la zone sont poussées
-          const mv=Math.sqrt(ptr.vx*ptr.vx+ptr.vy*ptr.vy)||1;
-          const proximity=(REPEL_R-d)/REPEL_R;
-          const strength=PUSH*proximity*(1+Math.min(mv*0.1,2.2));
-          const ndx=ptr.vx/mv, ndy=ptr.vy/mv;
-          this.vx+=ndx*strength + (Math.random()-0.5)*3.5;
-          this.vy+=ndy*strength + (Math.random()-0.5)*3.5;
-        }
-      }
-
-      // Ressort
-      const tdx=this.tx-this.x, tdy=this.ty-this.y;
-      const distSq=tdx*tdx+tdy*tdy;
-      this.vx+=tdx*SPRING; this.vy+=tdy*SPRING;
-
-      // Friction — extra forte si proche
-      const fric = distSq<9 ? 0.4 : FRICTION;
-      this.vx*=fric; this.vy*=fric;
-
-      // Snap net
-      if (distSq<0.5 && this.vx*this.vx+this.vy*this.vy<0.005) {
-        this.x=this.tx; this.y=this.ty; this.vx=0; this.vy=0;
-      } else {
-        this.x+=this.vx; this.y+=this.vy;
-      }
-
-      this.spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy);
-      if (this.a<this.baseA) this.a+=(this.baseA-this.a)*0.06;
-    }
-
-    draw() {
-      if (this.a<0.01) return;
-      const t=Math.min(this.spd/12,1);
-      const hue=this.bh*(1-t)+140*t;
-      const lit=this.bl*(1-t)+65*t;
-      const r=Math.max(this.r*this.scale3d, 0.3);
-      ctx.globalAlpha=this.a*(0.38+this.scale3d*0.62);
-      ctx.fillStyle=`hsl(${hue|0},${this.bs}%,${lit|0}%)`;
-      ctx.beginPath();
-      ctx.arc(this.x,this.y,r,0,6.2832);
-      ctx.fill();
-    }
-  }
-
-  // ── Rasterise texte user ───────────────────────────────────
-  // Découpe le texte en lignes pour remplir l'écran
-  function wrapText(text, fs) {
-    octx.font = `700 ${fs}px 'Space Mono', monospace`;
-    const maxW = W * 0.92;
-    // si ça tient en une ligne → une ligne
-    if (octx.measureText(text).width <= maxW) return [text];
-    // sinon découpe mot par mot
-    const words = text.split(' ');
-    if (words.length === 1) return [text]; // un seul mot, pas de découpe possible
-    const lines = [];
-    let cur = '';
-    for (const w of words) {
-      const test = cur ? cur + ' ' + w : w;
-      if (octx.measureText(test).width > maxW && cur) {
-        lines.push(cur); cur = w;
-      } else { cur = test; }
-    }
-    if (cur) lines.push(cur);
-    return lines;
-  }
-
-  function rasterize(text) {
-    octx.clearRect(0,0,W,H);
-    if (!text.trim()) { activeCount=0; return; }
-
-    const usableH = H * 0.82; // on laisse de la place pour la barre en bas
-    const maxW    = W * 0.92;
-
-    // Trouve la taille de police optimale :
-    // on cherche le fs maximal tel que toutes les lignes tiennent en largeur
-    // ET que l'ensemble des lignes tienne en hauteur
-    let fs = Math.min(H * 0.85, W * 1.2); // commence très grand
-    fs = Math.max(fs, 20);
-
-    let lines;
-    while (fs > 12) {
-      lines = wrapText(text, fs);
-      octx.font = `700 ${fs}px 'Space Mono', monospace`;
-      const lineH   = fs * 1.15;
-      const totalH  = lines.length * lineH;
-      const maxLineW = Math.max(...lines.map(l => octx.measureText(l).width));
-      if (maxLineW <= maxW && totalH <= usableH) break;
-      fs -= 2;
-    }
-
-    // Dessine les lignes centrées verticalement dans la zone usable
-    octx.font           = `700 ${fs}px 'Space Mono', monospace`;
-    octx.fillStyle      = '#fff';
-    octx.textAlign      = 'center';
-    octx.textBaseline   = 'middle';
-    const lineH   = fs * 1.15;
-    const totalH  = lines.length * lineH;
-    const startY  = (H * 0.46) - totalH/2 + lineH/2; // centré légèrement vers le haut
-    for (let i=0; i<lines.length; i++) {
-      octx.fillText(lines[i], W/2, startY + i*lineH);
-    }
-
-    const d  = octx.getImageData(0,0,W,H).data;
-    const pts = [];
-    const sp  = quality.spacing;
-    for(let y=0;y<H;y+=sp) for(let x=0;x<W;x+=sp)
-      if(d[(y*W+x)*4+3]>128) pts.push(x,y);
-
-    // Stocke les points centrés pour la rotation 3D texte
-    textPts3D = [];
-    const iLay = quality.idleLayers;
-    const depth = fs * 0.28;
-    for(let i=0;i<pts.length;i+=2){
-      const ox=pts[i]-W/2, oy=pts[i+1]-H/2;
-      if(text3DMode){
-        // extrusion comme CENTRAX : N couches sur Z
-        for(let l=0;l<iLay;l++){
-          const oz=-depth/2+l*(depth/(iLay-1));
-          textPts3D.push({ox,oy,oz});
-        }
-      } else {
-        textPts3D.push({ox,oy,oz:0});
-      }
-    }
-    textAngle = 0;
-
-    const n3D = text3DMode ? textPts3D.length : pts.length>>1;
-    const n   = pts.length>>1;
-
-    // En mode 3D : rayon inversement proportionnel au nb de caractères et à la qualité
-    // 1 char court + qualité basse → très grosses billes
-    // texte long + HD → petites billes
-    let rBase = quality.rBase;
-    if (text3DMode) {
-      const charFactor  = Math.max(0.3, 1 - (text.trim().length - 1) * 0.06); // diminue avec les chars
-      const qualFactor  = quality.spacing / 3; // bas=2, med=1, high=0.67
-      rBase = quality.rBase * charFactor * qualFactor * 3.5;
-      rBase = Math.max(rBase, quality.rBase);
-    }
-
-    const poolTarget = text3DMode ? n3D : n;
-    while(pool.length<poolTarget) pool.push(new Particle(pts[pool.length%n*2] ?? W/2, pts[pool.length%n*2+1] ?? H/2, false));
-    for(let i=0;i<poolTarget;i++){
-      const pi = text3DMode ? i : i;
-      const tx = text3DMode ? (W/2 + textPts3D[i].ox) : pts[i*2];
-      const ty = text3DMode ? (H/2 + textPts3D[i].oy) : pts[i*2+1];
-      pool[i].tx=tx; pool[i].ty=ty; pool[i].scale3d=1;
-      pool[i].bh=sandColor.h; pool[i].bs=sandColor.s;
-      pool[i].r = rBase*(0.7+Math.random()*0.6);
-      pool[i].isIdle=false;
-      if(pool[i].a<0.1){pool[i].x=tx;pool[i].y=ty;pool[i].vx=0;pool[i].vy=0;}
-      pool[i].a=Math.max(pool[i].a,0.65);
-    }
-    activeCount = poolTarget;
-  }
-
-  // ── Input ─────────────────────────────────────────────────
-  let rasterTimer=null;
-  function scheduleRaster(){
-    clearTimeout(rasterTimer);
-    rasterTimer=setTimeout(()=>{
-      if(inp.value.trim()){idleMode=false;rasterize(inp.value);}
-      else{idleMode=true;buildIdle();}
-    },0);
-  }
-  inp.addEventListener('input',()=>{ hint.style.opacity='0'; scheduleRaster(); });
+  let rt=null;
+  function scheduleRaster(){clearTimeout(rt);rt=setTimeout(()=>{if(inp.value.trim()){idleMode=false;imageMode=false;rasterize(inp.value);}else if(!imageMode){idleMode=true;buildIdle();}},0);}
+  inp.addEventListener('input',()=>{hint.style.opacity='0';scheduleRaster();});
 
   // ── Loop ──────────────────────────────────────────────────
-  function projectText3D() {
-    const n=textPts3D.length; if(!n) return;
-    while(pool.length<n) pool.push(new Particle(W/2,H/2,false));
-    const cosA=Math.cos(textAngle), sinA=Math.sin(textAngle);
-    for(let i=0;i<n;i++){
-      const {ox,oy,oz}=textPts3D[i];
-      // Vraie rotation Y : x'=ox·cos−oz·sin, z'=ox·sin+oz·cos
-      const rx=ox*cosA - oz*sinA;
-      const rz=ox*sinA + oz*cosA;
-      const sc=FOCAL/(FOCAL+rz);
-      pool[i].tx=W/2+rx*sc; pool[i].ty=H/2+oy*sc; pool[i].scale3d=sc;
-      if(pool[i].a<0.05){pool[i].x=pool[i].tx;pool[i].y=pool[i].ty;pool[i].vx=0;pool[i].vy=0;}
-      pool[i].a=Math.max(pool[i].a,0.6);
-    }
-    activeCount=n;
-  }
-
   function loop(){
     if(ptr.x>0){stillTimer++;if(stillTimer>=STILL_DELAY)ptr.still=true;}
     if(idleMode&&idlePts.length){angle+=0.007;projectIdle();}
-    if(!idleMode&&text3DMode&&textPts3D.length){textAngle+=0.007;projectText3D();}
-
-    ctx.clearRect(0,0,W,H); ctx.globalAlpha=1;
-
-    if(idleMode || (!idleMode&&text3DMode&&textPts3D.length)){
-      // tri back-to-front par scale3d
-      const slice=pool.slice(0,activeCount).sort((a,b)=>a.scale3d-b.scale3d);
-      for(const p of slice){p.update(true);p.draw();}
+    if(!idleMode&&!imageMode&&text3DMode&&textPts3D.length){textAngle+=0.007;projectText3D();}
+    ctx.clearRect(0,0,W,H);ctx.globalAlpha=1;
+    const need3d=idleMode||((!idleMode&&!imageMode)&&text3DMode&&textPts3D.length>0);
+    if(need3d){
+      const sl=pool.slice(0,activeCount).sort((a,b)=>a.scale3d-b.scale3d);
+      for(const p of sl){p.update(true);p.draw();}
       for(let i=activeCount;i<pool.length;i++){pool[i].update(false);pool[i].draw();}
     } else {
       for(let i=0;i<pool.length;i++){pool[i].update(i<activeCount);pool[i].draw();}
     }
+    ctx.globalAlpha=1;
     requestAnimationFrame(loop);
   }
 
