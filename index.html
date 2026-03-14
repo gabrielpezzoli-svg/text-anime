@@ -142,6 +142,14 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
       <span class="panel-label">Image</span>
       <label class="upload-label" for="fileInput">📷 Choisir une photo</label>
     </div>
+    <div class="panel-row" id="imgQualRow">
+      <span class="panel-label">Qualité img</span>
+      <div class="btn-group">
+        <button class="qbtn" data-iq="low">Bas</button>
+        <button class="qbtn active" data-iq="med">Moyen</button>
+        <button class="qbtn" data-iq="high">Élevé</button>
+      </div>
+    </div>
     <div class="panel-row" id="imgClearRow" style="display:none">
       <span class="panel-label"></span>
       <button class="clear-btn" id="btnClearImg">✕ Retirer la photo</button>
@@ -204,6 +212,15 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
   // ── Pool ──────────────────────────────────────────────────
   const pool = []; let activeCount = 0;
   let imageMode = false;
+  let lastImageFile = null; // keep ref to reload at new quality
+
+  // Image quality levels : spacing + particle radius
+  const IMG_QUALITY = {
+    low:  { spacing: 6, rBase: 2.0 },   // grosses billes, rapide
+    med:  { spacing: 3, rBase: 1.0 },   // actuel
+    high: { spacing: 1, rBase: 0.5 },   // très fin, vrai pixel-art
+  };
+  let imgQuality = IMG_QUALITY.med;
 
   // ── 3D CENTRAX ────────────────────────────────────────────
   let angle=0, idleMode=true, idlePts=[];
@@ -372,30 +389,35 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
 
   // ── Image → sable ─────────────────────────────────────────
   function loadImage(file){
+    if(file) lastImageFile = file;
+    else if(lastImageFile) file = lastImageFile;
+    else return;
     const url=URL.createObjectURL(file);
     const img=new Image();
     img.onload=()=>{
       URL.revokeObjectURL(url);
-      // Fit dans 90% de l'écran en gardant le ratio
+      const sp  = imgQuality.spacing;
+      const rB  = imgQuality.rBase;
+      // Fit dans l'écran en gardant le ratio
       const scale=Math.min((W*0.9)/img.width,(H*0.72)/img.height);
       const iw=img.width*scale, ih=img.height*scale;
-      const ix=(W-iw)/2,  iy=(H-ih)/2 - 20;
+      const ix=(W-iw)/2, iy=(H-ih)/2 - 20;
       octx.clearRect(0,0,W,H);
       octx.drawImage(img,ix,iy,iw,ih);
       const data=octx.getImageData(0,0,W,H).data;
       octx.clearRect(0,0,W,H);
-      const sp=quality.spacing;
       const pts=[],colors=[];
       for(let y=0;y<H;y+=sp)for(let x=0;x<W;x+=sp){
         const idx=(y*W+x)*4;
         if(data[idx+3]>30){ pts.push(x,y); colors.push(data[idx],data[idx+1],data[idx+2]); }
       }
       const n=pts.length>>1;
+      // reset pool
       while(pool.length<n)pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1],false));
       for(let i=0;i<n;i++){
         pool[i].tx=pts[i*2];pool[i].ty=pts[i*2+1];pool[i].scale3d=1;
         pool[i].customColor=`rgb(${colors[i*3]},${colors[i*3+1]},${colors[i*3+2]})`;
-        pool[i].r=quality.rBase*(0.7+Math.random()*0.6);
+        pool[i].r=rB*(0.7+Math.random()*0.6);
         if(pool[i].a<0.1){pool[i].x=pts[i*2];pool[i].y=pts[i*2+1];pool[i].vx=0;pool[i].vy=0;}
         pool[i].a=Math.max(pool[i].a,0.65);
       }
@@ -409,6 +431,13 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
   document.getElementById('fileInput').addEventListener('change',e=>{
     if(e.target.files[0])loadImage(e.target.files[0]);
   });
+
+  document.querySelectorAll('.qbtn[data-iq]').forEach(b=>b.addEventListener('click',()=>{
+    imgQuality=IMG_QUALITY[b.dataset.iq];
+    document.querySelectorAll('.qbtn[data-iq]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    if(imageMode) loadImage(null); // rechargement avec nouvelle qualité
+  }));
   document.getElementById('btnClearImg').addEventListener('click',()=>{
     imageMode=false;
     pool.forEach(p=>p.customColor=null);
