@@ -407,7 +407,7 @@
   const toggle3d = document.getElementById('toggle3d');
   toggle3d.addEventListener('change', () => {
     text3DMode = toggle3d.checked;
-    if (!idleMode) scheduleRaster();
+    if (!idleMode && inp.value.trim()) scheduleRaster();
   });
 
   const pool = []; let activeCount = 0;
@@ -625,7 +625,20 @@
 
     // Stocke les points centrés pour la rotation 3D texte
     textPts3D = [];
-    for(let i=0;i<pts.length;i+=2) textPts3D.push({ox:pts[i]-W/2, oy:pts[i+1]-H/2});
+    const iLay = quality.idleLayers;
+    const depth = fs * 0.28;
+    for(let i=0;i<pts.length;i+=2){
+      const ox=pts[i]-W/2, oy=pts[i+1]-H/2;
+      if(text3DMode){
+        // extrusion comme CENTRAX : N couches sur Z
+        for(let l=0;l<iLay;l++){
+          const oz=-depth/2+l*(depth/(iLay-1));
+          textPts3D.push({ox,oy,oz});
+        }
+      } else {
+        textPts3D.push({ox,oy,oz:0});
+      }
+    }
     textAngle = 0;
 
     const n = pts.length>>1;
@@ -659,8 +672,10 @@
     while(pool.length<n) pool.push(new Particle(W/2,H/2,false));
     const cosA=Math.cos(textAngle), sinA=Math.sin(textAngle);
     for(let i=0;i<n;i++){
-      const {ox,oy}=textPts3D[i];
-      const rx=ox*cosA, rz=ox*sinA;
+      const {ox,oy,oz}=textPts3D[i];
+      // Vraie rotation Y : x'=ox·cos−oz·sin, z'=ox·sin+oz·cos
+      const rx=ox*cosA - oz*sinA;
+      const rz=ox*sinA + oz*cosA;
       const sc=FOCAL/(FOCAL+rz);
       pool[i].tx=W/2+rx*sc; pool[i].ty=H/2+oy*sc; pool[i].scale3d=sc;
       if(pool[i].a<0.05){pool[i].x=pool[i].tx;pool[i].y=pool[i].ty;pool[i].vx=0;pool[i].vy=0;}
