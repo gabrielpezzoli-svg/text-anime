@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Particle Text</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&family=DM+Sans:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #050912;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end;
+  }
+  canvas { position: fixed; top:0; left:0; z-index:1; }
+  .bar {
+    position: relative; z-index: 10;
+    width: min(680px, 88vw);
+    margin-bottom: 38px;
+    background: rgba(8,16,40,0.82);
+    border: 1px solid rgba(74,200,255,0.15);
+    border-radius: 60px;
+    padding: 13px 26px;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03);
+    transition: border-color .3s, box-shadow .3s;
+  }
+  .bar:focus-within {
+    border-color: rgba(74,200,255,0.38);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 0 28px rgba(74,200,255,0.07);
+  }
+  .bar input {
+    width: 100%;
+    background: transparent; border: none; outline: none;
+    color: #ddf0ff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 300; letter-spacing: .05em;
+    caret-color: #4af3ff;
+  }
+  .bar input::placeholder { color: rgba(130,180,220,0.28); font-style: italic; }
+  .hint {
+    position: fixed; bottom: 108px; left: 50%; transform: translateX(-50%);
+    z-index:10; color: rgba(74,200,255,0.22);
+    font: 300 10px/1 'DM Sans', sans-serif;
+    letter-spacing: .18em; text-transform: uppercase;
+    pointer-events: none; transition: opacity .6s;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<p class="hint" id="hint">Commencez à taper…</p>
+<div class="bar"><input id="inp" type="text" placeholder="Votre texte ici…" autocomplete="off" spellcheck="false"></div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d');
+  const inp    = document.getElementById('inp');
+  const hint   = document.getElementById('hint');
+
+  let W, H;
+  const mouse = { x: -9999, y: -9999 };
+
+  // Physics constants
+  const REPEL_R  = 85;
+  const SPACING  = 3;      // sample grid px — controls density
+  const FRICTION = 0.84;
+  const SPRING   = 0.065;
+  const PUSH     = 7.5;
+
+  // Single flat pool — no destroy/create spam
+  const pool = [];
+  let activeCount = 0;   // how many pool entries currently have real targets
+
+  /* ── Off-screen canvas for rasterising ─────────────────── */
+  const off  = document.createElement('canvas');
+  const octx = off.getContext('2d');
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    off.width = W; off.height = H;
+  }
+  window.addEventListener('resize', () => { resize(); rasterize(inp.value); });
+  resize();
+
+  window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+
+  /* ── Particle ───────────────────────────────────────────── */
+  class Particle {
+    constructor(tx, ty) {
+      this.x  = Math.random() * W;
+      this.y  = Math.random() * H;
+      this.vx = 0; this.vy = 0;
+      this.tx = tx; this.ty = ty;
+      this.r  = 0.5 + Math.random() * 0.55;
+      const h = 195 + Math.random() * 35;
+      const l = 58  + Math.random() * 28;
+      this.col = `hsl(${h|0},90%,${l|0}%)`;
+      this.a   = 0.6 + Math.random() * 0.35;
+      this.baseA = this.a;
+    }
+
+    update(active) {
+      if (active) {
+        // repel from mouse
+        const dx = mouse.x - this.x, dy = mouse.y - this.y;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < REPEL_R * REPEL_R) {
+          const d   = Math.sqrt(d2);
+          const f   = (REPEL_R - d) / REPEL_R;
+          const ang = Math.atan2(dy, dx);
+          this.vx -= Math.cos(ang) * f * PUSH;
+          this.vy -= Math.sin(ang) * f * PUSH;
+        }
+        // spring back to target
+        this.vx += (this.tx - this.x) * SPRING;
+        this.vy += (this.ty - this.y) * SPRING;
+        this.vx *= FRICTION; this.vy *= FRICTION;
+        this.x  += this.vx;  this.y  += this.vy;
+        // restore alpha
+        if (this.a < this.baseA) this.a += (this.baseA - this.a) * 0.08;
+      } else {
+        // idle: drift off
+        this.vx *= 0.97; this.vy *= 0.97;
+        this.x  += this.vx; this.y += this.vy;
+        this.a  *= 0.97;   // fade out
+      }
+    }
+
+    draw() {
+      if (this.a < 0.01) return;
+      ctx.globalAlpha = this.a;
+      ctx.fillStyle   = this.col;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+
+  /* ── Rasterise text → distribute among pool ────────────── */
+  function rasterize(text) {
+    octx.clearRect(0, 0, W, H);
+
+    if (!text.trim()) {
+      // deactivate all — they'll fade
+      activeCount = 0;
+      return;
+    }
+
+    // Font size: bigger for fewer characters
+    const len = text.length;
+    let fs = Math.min(
+      H * 0.32,
+      W * (len <= 3  ? 0.60
+         : len <= 6  ? 0.42
+         : len <= 10 ? 0.30
+         : len <= 16 ? 0.22
+         :             0.16)
+    );
+    fs = Math.max(fs, 24);
+    octx.font = `700 ${fs}px 'Space Mono', monospace`;
+    while (octx.measureText(text).width > W * 0.93 && fs > 20) {
+      fs -= 2;
+      octx.font = `700 ${fs}px 'Space Mono', monospace`;
+    }
+
+    octx.fillStyle    = '#fff';
+    octx.textAlign    = 'center';
+    octx.textBaseline = 'middle';
+    octx.fillText(text, W/2, H/2);
+
+    const d = octx.getImageData(0, 0, W, H).data;
+    const pts = [];
+    for (let y = 0; y < H; y += SPACING)
+      for (let x = 0; x < W; x += SPACING)
+        if (d[(y*W + x)*4 + 3] > 128) pts.push(x, y);  // flat array, faster
+
+    const n = pts.length >> 1; // number of points
+
+    // Grow pool if needed (never shrink — reuse)
+    while (pool.length < n) {
+      pool.push(new Particle(pts[(pool.length)*2], pts[(pool.length)*2+1]));
+    }
+
+    // Assign new targets
+    for (let i = 0; i < n; i++) {
+      pool[i].tx = pts[i*2];
+      pool[i].ty = pts[i*2+1];
+      pool[i].a  = Math.max(pool[i].a, 0.05); // wake up faded particles
+    }
+
+    activeCount = n;
+  }
+
+  /* ── Render loop ────────────────────────────────────────── */
+  function loop() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    for (let i = 0; i < pool.length; i++) {
+      pool[i].update(i < activeCount);
+      pool[i].draw();
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  /* ── Input ──────────────────────────────────────────────── */
+  inp.addEventListener('input', () => {
+    hint.style.opacity = inp.value.trim() ? '0' : '1';
+    rasterize(inp.value);
+  });
+
+  loop();
+})();
+</script>
+</body>
+</html>
