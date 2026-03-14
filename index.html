@@ -425,12 +425,22 @@
     octx.font = `700 ${fs}px 'Space Mono', monospace`;
     while (octx.measureText('CENTRAX').width > W*0.84 && fs>20) { fs-=2; octx.font=`700 ${fs}px 'Space Mono', monospace`; }
 
-    const sw = Math.max(fs*0.10, 5);
+    const sw = Math.max(fs*0.07, 4);
     octx.lineWidth=sw; octx.lineJoin='round';
     octx.strokeStyle='#fff'; octx.fillStyle='#fff';
-    octx.textAlign='center'; octx.textBaseline='middle';
-    octx.strokeText('CENTRAX',W/2,H/2);
-    octx.fillText('CENTRAX',W/2,H/2);
+    octx.textAlign='left'; octx.textBaseline='middle';
+
+    // Espacement entre lettres : 10% de la taille de police
+    const letters   = 'CENTRAX'.split('');
+    const spacing   = fs * 0.10;
+    const charWidths = letters.map(l => octx.measureText(l).width);
+    const totalW     = charWidths.reduce((a,b)=>a+b,0) + spacing*(letters.length-1);
+    let cx = W/2 - totalW/2;
+    for(let i=0;i<letters.length;i++){
+      octx.strokeText(letters[i], cx, H/2);
+      octx.fillText(letters[i], cx, H/2);
+      cx += charWidths[i] + spacing;
+    }
 
     const imgData = octx.getImageData(0,0,W,H).data;
     const surface = [];
