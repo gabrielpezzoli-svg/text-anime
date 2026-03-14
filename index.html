@@ -651,18 +651,34 @@
     }
     textAngle = 0;
 
-    const n = pts.length>>1;
-    while(pool.length<n) pool.push(new Particle(pts[pool.length*2],pts[pool.length*2+1], false));
-    for(let i=0;i<n;i++){
-      pool[i].tx=pts[i*2]; pool[i].ty=pts[i*2+1]; pool[i].scale3d=1;
+    const n3D = text3DMode ? textPts3D.length : pts.length>>1;
+    const n   = pts.length>>1;
+
+    // En mode 3D : rayon inversement proportionnel au nb de caractères et à la qualité
+    // 1 char court + qualité basse → très grosses billes
+    // texte long + HD → petites billes
+    let rBase = quality.rBase;
+    if (text3DMode) {
+      const charFactor  = Math.max(0.3, 1 - (text.trim().length - 1) * 0.06); // diminue avec les chars
+      const qualFactor  = quality.spacing / 3; // bas=2, med=1, high=0.67
+      rBase = quality.rBase * charFactor * qualFactor * 3.5;
+      rBase = Math.max(rBase, quality.rBase);
+    }
+
+    const poolTarget = text3DMode ? n3D : n;
+    while(pool.length<poolTarget) pool.push(new Particle(pts[pool.length%n*2] ?? W/2, pts[pool.length%n*2+1] ?? H/2, false));
+    for(let i=0;i<poolTarget;i++){
+      const pi = text3DMode ? i : i;
+      const tx = text3DMode ? (W/2 + textPts3D[i].ox) : pts[i*2];
+      const ty = text3DMode ? (H/2 + textPts3D[i].oy) : pts[i*2+1];
+      pool[i].tx=tx; pool[i].ty=ty; pool[i].scale3d=1;
       pool[i].bh=sandColor.h; pool[i].bs=sandColor.s;
-      const rBase=quality.rBase;
       pool[i].r = rBase*(0.7+Math.random()*0.6);
       pool[i].isIdle=false;
-      if(pool[i].a<0.1){pool[i].x=pts[i*2];pool[i].y=pts[i*2+1];pool[i].vx=0;pool[i].vy=0;}
+      if(pool[i].a<0.1){pool[i].x=tx;pool[i].y=ty;pool[i].vx=0;pool[i].vy=0;}
       pool[i].a=Math.max(pool[i].a,0.65);
     }
-    activeCount=n;
+    activeCount = poolTarget;
   }
 
   // ── Input ─────────────────────────────────────────────────
